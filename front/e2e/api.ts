@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-import type { IssueDetailDto } from "@lib/api-types";
+import type { IssueDetailDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
 import type { Page } from "@playwright/test";
 
 /**
@@ -42,6 +42,33 @@ export async function createIssue(page: Page, body: CreateIssueBody): Promise<Is
 
 export async function archiveIssue(page: Page, identifier: string): Promise<void> {
   const response = await page.request.delete(`/api/issues/${identifier}`, {
+    headers: { "x-csrf-token": await csrfToken(page) },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
+export async function fetchStates(page: Page): Promise<WorkflowStateDto[]> {
+  const response = await page.request.get("/api/states");
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()) as WorkflowStateDto[];
+}
+
+/**
+ * A label of this run's own, rather than whichever the seed happens to hold: a
+ * filter spec that asserts on a label it did not create is a spec that passes
+ * or fails on the state of the dev database.
+ */
+export async function createLabel(page: Page, name: string, color = "#7c3aed"): Promise<LabelDto> {
+  const response = await page.request.post("/api/labels", {
+    headers: { "x-csrf-token": await csrfToken(page) },
+    data: { name, color },
+  });
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()) as LabelDto;
+}
+
+export async function deleteLabel(page: Page, id: string): Promise<void> {
+  const response = await page.request.delete(`/api/labels/${id}`, {
     headers: { "x-csrf-token": await csrfToken(page) },
   });
   expect(response.ok()).toBeTruthy();

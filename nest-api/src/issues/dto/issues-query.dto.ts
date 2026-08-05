@@ -104,6 +104,23 @@ export class IssuesQueryDto {
   @MaxLength(FIELD_LIMITS.identifier)
   epic?: string;
 
+  /** Live or legacy identifier of an epic whose children are *not* wanted. */
+  @IsOptional()
+  @Transform(toUpperCase)
+  @IsString()
+  @MaxLength(FIELD_LIMITS.identifier)
+  excludeEpic?: string;
+
+  /**
+   * Cardinality rather than identity: `true` keeps only issues that sit in some
+   * epic, `false` only issues that sit in none. `epic` and `excludeEpic` name
+   * one; this asks whether there is one at all, which no identifier can express.
+   */
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  hasEpic?: boolean;
+
   @IsOptional()
   @Transform(toBoolean)
   @IsBoolean()
