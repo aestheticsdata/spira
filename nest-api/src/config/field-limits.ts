@@ -19,6 +19,8 @@ export const FIELD_LIMITS = {
   labelName: 60,
   /** `SavedView.name`. */
   viewName: 80,
+  /** `SavedView.query` — the whole list URL's query string. */
+  viewQuery: 2000,
   /** `Project.icon` — a Material Symbols ligature name or one emoji. */
   icon: 40,
   /** `*.color` — `#rrggbb` or `#rrggbbaa`. */

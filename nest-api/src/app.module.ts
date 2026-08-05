@@ -11,6 +11,7 @@ import { LabelsModule } from "@labels/labels.module";
 import { ProjectsModule } from "@projects/projects.module";
 import { IssuesModule } from "@issues/issues.module";
 import { SearchModule } from "@search/search.module";
+import { ViewsModule } from "@views/views.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SearchModule } from "@search/search.module";
     ProjectsModule,
     IssuesModule,
     SearchModule,
+    ViewsModule,
   ],
   controllers: [AppController],
 })

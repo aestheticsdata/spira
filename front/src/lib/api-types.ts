@@ -106,6 +106,26 @@ export interface SearchResponseDto {
   results: SearchResultDto[];
 }
 
+/**
+ * A saved view is a stored list query, not a schema of its own: `query` is the
+ * address bar's own query string, so opening a view is pushing it back and
+ * saving one is persisting what is already there (COS-265).
+ */
+export interface SavedViewDto {
+  id: string;
+  name: string;
+  icon: string | null;
+  /** Null for a workspace-wide view. */
+  project: ProjectSummaryDto | null;
+  /** Null when the stored query no longer validates — see `invalid`. */
+  query: string | null;
+  position: number;
+  /** Why the stored query no longer validates, or null when it does. */
+  invalid: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthenticatedUserDto {
   id: string;
   username: string;

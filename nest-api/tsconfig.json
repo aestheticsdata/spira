@@ -23,7 +23,8 @@
       "@issues/*": ["./src/issues/*"],
       "@labels/*": ["./src/labels/*"],
       "@states/*": ["./src/states/*"],
-      "@search/*": ["./src/search/*"]
+      "@search/*": ["./src/search/*"],
+      "@views/*": ["./src/views/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
