@@ -1,5 +1,6 @@
 import { IssueProperties } from "@components/issues/issue-properties";
 import { IssueRelations } from "@components/issues/issue-relations";
+import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
@@ -64,11 +65,12 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
             )}
 
             <div className="mt-[30px]">
-              {issue.description ? (
-                <Markdown source={issue.description} />
-              ) : (
-                <p className="text-14 leading-[1.65] text-ink-7">No description yet.</p>
-              )}
+              <EditableDescription
+                endpoint={`/issues/${issue.identifier}`}
+                source={issue.description}
+              >
+                <Markdown source={issue.description ?? ""} />
+              </EditableDescription>
             </div>
           </div>
         </div>
