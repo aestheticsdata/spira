@@ -71,6 +71,9 @@ export interface IssueListItemDto {
   project: ProjectSummaryDto;
   epicProgress: { done: number; total: number } | null;
   sortOrder: number;
+  /** Non-null once archived. Always null on a list row — lists exclude archived
+   *  issues — so only the detail route ever carries a value here. */
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -61,6 +61,10 @@ export interface IssueListItemDto {
   /** Only for epics: children completed / children total. */
   epicProgress: EpicProgressDto | null;
   sortOrder: number;
+  /** Non-null once archived. Lists leave archived issues out by default, so on
+   *  a list row this is always null; the detail route returns them either way,
+   *  which is what makes a restore reachable. */
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

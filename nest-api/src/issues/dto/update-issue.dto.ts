@@ -60,4 +60,13 @@ export class UpdateIssueDto {
   @ArrayMaxSize(MAX_LABELS_PER_ISSUE)
   @IsUUID("all", { each: true })
   labelIds?: string[];
+
+  /**
+   * `DELETE /issues/:identifier` archives, and there is no un-DELETE. Restoring
+   * rides on PATCH the way it does for projects, so the round trip is one verb
+   * in each direction rather than a verb out and no way back.
+   */
+  @IsOptional()
+  @IsBoolean()
+  archived?: boolean;
 }
