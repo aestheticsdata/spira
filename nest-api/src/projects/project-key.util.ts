@@ -5,6 +5,20 @@ import { FIELD_LIMITS } from "@config/field-limits";
 /** The identifier prefix: uppercase alphanumerics, 2-5 characters ("PFA" in "PFA-12"). */
 export const PROJECT_KEY_PATTERN = /^[A-Z0-9]{2,5}$/;
 
+/**
+ * Keys the front's routing cannot survive. A project lives at `/<key>/issues`,
+ * a static segment beats the dynamic `[key]` one, and the loser is the project:
+ * keyed ISSUE it would sit under `/issue/...`, keyed LOGIN under the login
+ * screen. API is the same story for the `/api` rewrite, and NEW is held back
+ * for the create routes. `PROJECTS` and `SETTINGS` need no entry — both are
+ * longer than the five characters a key is allowed.
+ *
+ * Mirrored in `front/src/components/shared/config/constants.ts`, which uses it
+ * to say so before the request leaves the browser. This copy is the one that
+ * decides.
+ */
+export const RESERVED_PROJECT_KEYS: readonly string[] = ["ISSUE", "LOGIN", "API", "NEW"];
+
 const SUGGESTION_LENGTH = 3;
 const MAX_KEY_LENGTH = FIELD_LIMITS.projectKey;
 const FALLBACK_KEY = "PRJ";
@@ -15,9 +29,16 @@ export function normaliseProjectKey(raw: string): string {
   return raw.trim().toUpperCase();
 }
 
-/** A key made only of digits reads as an issue number, so it is never suggested. */
+export function isReservedProjectKey(key: string): boolean {
+  return RESERVED_PROJECT_KEYS.includes(normaliseProjectKey(key));
+}
+
+/**
+ * A key made only of digits reads as an issue number, and a reserved one
+ * collides with a route, so neither is ever suggested.
+ */
 function isUsable(candidate: string): boolean {
-  return PROJECT_KEY_PATTERN.test(candidate) && !ALL_DIGITS.test(candidate);
+  return PROJECT_KEY_PATTERN.test(candidate) && !ALL_DIGITS.test(candidate) && !isReservedProjectKey(candidate);
 }
 
 function baseKey(name: string): string {

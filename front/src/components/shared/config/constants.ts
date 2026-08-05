@@ -7,10 +7,17 @@
 export const ROUTES = {
   login: { path: "/login" },
   projects: { path: "/projects" },
+  projectNew: { path: "/projects/new" },
   projectIssues: { path: (key: string) => `/${key.toLowerCase()}/issues` },
   projectOverview: { path: (key: string) => `/${key.toLowerCase()}/overview` },
+  projectEdit: { path: (key: string) => `/${key.toLowerCase()}/edit` },
   issue: { path: (identifier: string) => `/issue/${identifier.toUpperCase()}` },
   settings: { path: "/settings" },
 } as const;
 
+/**
+ * Mirrors `RESERVED_PROJECT_KEYS` in `nest-api/src/projects/project-key.util.ts`,
+ * which is what actually rejects them. This copy only exists so the form can
+ * say why before the request leaves the browser.
+ */
 export const RESERVED_PROJECT_KEYS = ["ISSUE", "LOGIN", "API", "NEW"] as const;

@@ -1,4 +1,10 @@
-import { PROJECT_KEY_PATTERN, normaliseProjectKey, suggestProjectKey } from "@projects/project-key.util";
+import {
+  PROJECT_KEY_PATTERN,
+  RESERVED_PROJECT_KEYS,
+  isReservedProjectKey,
+  normaliseProjectKey,
+  suggestProjectKey,
+} from "@projects/project-key.util";
 
 describe("normaliseProjectKey", () => {
   it("trims and uppercases", () => {
@@ -74,6 +80,51 @@ describe("suggestProjectKey", () => {
 
     for (const name of names) {
       expect(suggestProjectKey(name, taken)).toMatch(PROJECT_KEY_PATTERN);
+    }
+  });
+
+  it("never suggests a key the routes have taken", () => {
+    // "New site" heads with NEW, "Issue tracker" with ISS-ue's first three,
+    // "Login" with LOG — only the first two of those are reserved, and the
+    // suggestion has to route around them without asking the owner.
+    expect(suggestProjectKey("New site", [])).not.toBe("NEW");
+    expect(suggestProjectKey("API gateway", [])).not.toBe("API");
+    expect(suggestProjectKey("Login", [])).toBe("LOG");
+
+    for (const name of ["New", "new", "API", "Api", "Issue", "issue"]) {
+      expect(isReservedProjectKey(suggestProjectKey(name, []))).toBe(false);
+    }
+  });
+
+  it("does not offer a reserved key as a collision suffix either", () => {
+    // Nothing suffixed can collide today (every reserved key is letters-only),
+    // so this pins the invariant rather than a current failure.
+    const suggestion = suggestProjectKey("New site", ["NW", "NWS"]);
+
+    expect(isReservedProjectKey(suggestion)).toBe(false);
+    expect(suggestion).toMatch(PROJECT_KEY_PATTERN);
+  });
+});
+
+describe("isReservedProjectKey", () => {
+  it("matches the reserved list regardless of case or padding", () => {
+    expect(isReservedProjectKey("ISSUE")).toBe(true);
+    expect(isReservedProjectKey(" login ")).toBe(true);
+    expect(isReservedProjectKey("api")).toBe(true);
+    expect(isReservedProjectKey("New")).toBe(true);
+  });
+
+  it("leaves ordinary keys alone", () => {
+    expect(isReservedProjectKey("SPI")).toBe(false);
+    expect(isReservedProjectKey("PFA")).toBe(false);
+    expect(isReservedProjectKey("APIS")).toBe(false);
+  });
+
+  it("only reserves keys a project could actually have held", () => {
+    // PROJECTS and SETTINGS are absent on purpose: both are longer than the
+    // column, so reserving them would only be noise.
+    for (const key of RESERVED_PROJECT_KEYS) {
+      expect(key).toMatch(PROJECT_KEY_PATTERN);
     }
   });
 });
