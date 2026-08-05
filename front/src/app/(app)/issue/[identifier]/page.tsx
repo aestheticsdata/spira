@@ -37,8 +37,6 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
     serverFetch<IssueListItemDto[]>(`/issues?project=${issue.project.key}&isEpic=true`),
   ]);
 
-  const hasRelations = issue.relations.blockedBy.length > 0 || issue.relations.blocks.length > 0;
-
   return (
     <>
       <AppHeader
@@ -104,12 +102,11 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
           <div className="my-4 h-px bg-line-chrome" />
           <IssueArchiveControl issue={issue} />
 
-          {hasRelations && (
-            <>
-              <div className="my-4 h-px bg-line-chrome" />
-              <IssueRelations relations={issue.relations} />
-            </>
-          )}
+          {/* Always drawn, unlike before: the section used to appear only once
+              a relation existed, which meant the only way to make the first one
+              was to already have one. */}
+          <div className="my-4 h-px bg-line-chrome" />
+          <IssueRelations issue={issue} />
 
           {issue.legacyIdentifier && (
             <>
