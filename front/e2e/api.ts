@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-import type { IssueDetailDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
+import type { IssueDetailDto, IssueListItemDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
 import type { Page } from "@playwright/test";
 
 /**
@@ -38,6 +38,18 @@ export async function createIssue(page: Page, body: CreateIssueBody): Promise<Is
   });
   expect(response.ok()).toBeTruthy();
   return (await response.json()) as IssueDetailDto;
+}
+
+/**
+ * Any issue list the API can answer, by query string. Specs use it to find what
+ * a test created through the UI — an issue filed by a quick-add has an
+ * identifier the spec never saw, and leaving it behind is how the dev database
+ * collects fixtures.
+ */
+export async function fetchIssues(page: Page, query: string): Promise<IssueListItemDto[]> {
+  const response = await page.request.get(`/api/issues?${query}`);
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()) as IssueListItemDto[];
 }
 
 export async function archiveIssue(page: Page, identifier: string): Promise<void> {

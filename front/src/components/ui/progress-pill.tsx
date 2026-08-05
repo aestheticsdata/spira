@@ -1,14 +1,23 @@
+import { epicProgressLabel } from "@components/issues/epic-children.util";
 import { cn } from "@lib/utils";
 
 /**
  * Epic progress: a conic-gradient ring plus `done/total`. The ring reads at a
  * glance across a long list where a percentage would not.
+ *
+ * Named like every other glyph in the app, because the two things it is made of
+ * — a gradient and two digits either side of a slash — carry nothing on their
+ * own. Read aloud it used to be "7/10", a ratio of nothing in particular.
  */
 export function ProgressPill({ done, total, className }: { done: number; total: number; className?: string }) {
   const degrees = total > 0 ? Math.round((done / total) * 360) : 0;
+  const label = epicProgressLabel(done, total);
 
   return (
     <span
+      role="img"
+      aria-label={label}
+      title={label}
       className={cn(
         "flex flex-none items-center gap-[7px] rounded-full border border-line-strong bg-pill py-0.5 pr-2 pl-[5px]",
         className,

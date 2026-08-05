@@ -25,14 +25,17 @@ export function IssueRow({
   issue,
   indent,
   display,
+  withinEpic = false,
 }: {
   issue: IssueListItemDto;
   indent: number;
   display: DisplayOptions;
+  /** These rows sit under the epic they belong to, so the chip repeats it. */
+  withinEpic?: boolean;
 }) {
-  // Grouped by epic, the group header already says which epic this is; the chip
-  // would only repeat it.
-  const parent = display.group === "epic" ? null : issue.epic;
+  // Grouped by epic, the group header already says which epic this is; on the
+  // epic's own page the whole section does. Either way the chip adds nothing.
+  const parent = withinEpic || display.group === "epic" ? null : issue.epic;
 
   return (
     <Link
