@@ -1,3 +1,4 @@
+import { NewIssueTrigger } from "@components/issues/new-issue-trigger";
 import { ROUTES } from "@components/shared/config/constants";
 import { SearchTrigger } from "@components/shell/search-trigger";
 import { SidebarLink } from "@components/shell/sidebar-link";
@@ -24,6 +25,7 @@ export function Sidebar({ projects }: { projects: ProjectListItemDto[] }) {
         <div className="identifier rounded-sm border border-line px-1 py-0.5 text-9 text-ink-8">{"1 user"}</div>
       </div>
 
+      <NewIssueTrigger projects={projects} />
       <SearchTrigger />
 
       {/* The two section links sit a pixel shorter than a project row. */}
