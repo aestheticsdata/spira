@@ -1,0 +1,13 @@
+/* ============================================================
+   Type — IBM Plex Sans for the interface, IBM Plex Mono for every
+   identifier, Material Symbols Rounded for project icons.
+
+   The design is pixel-specific (13px rows, 11.5px identifiers,
+   12.5px controls), so the scale is named by its literal size
+   rather than by t-shirt sizes that would round it away.
+   ============================================================ */
+
+:root {
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
