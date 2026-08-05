@@ -16,9 +16,20 @@ export default function Providers({
   initialUser: AuthenticatedUserDto | null;
   children: React.ReactNode;
 }) {
-  // Reads are served by Server Components, so React Query only backs mutations
-  // and the few client-side reads (search). Errors surface through error.tsx;
-  // expired sessions never get here — the 401 redirects at the request layer.
+  // Reads are served by Server Components, so React Query backs only the few
+  // that have to happen in the browser: the search dialog, the markdown
+  // reference chip, the relation picker and the new-issue dialog's option
+  // lists.
+  //
+  // Writes deliberately do not go through it. There is no `useMutation` in the
+  // app: a mutation here would invalidate a cache the Server Components never
+  // read, so every write calls the API and then `router.refresh()`, which
+  // re-renders the list on the side that actually owns it. Nothing is held
+  // optimistically — a status that flips back after a failed request is worse
+  // than one that takes a moment to move.
+  //
+  // Errors surface through error.tsx; expired sessions never get here — the
+  // 401 redirects at the request layer.
   const [queryClient] = useState(
     () =>
       new QueryClient({

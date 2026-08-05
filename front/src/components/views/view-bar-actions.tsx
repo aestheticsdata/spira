@@ -4,7 +4,7 @@ import { sameListQuery, toListQuery } from "@components/filters/list-query";
 import { useListView } from "@components/filters/use-list-view";
 import { SaveViewDialog } from "@components/views/save-view-dialog";
 import useRequestHelper from "@helpers/useRequestHelper";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -31,9 +31,8 @@ export function ViewBarActions({
   projectKey?: string | null;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const { privateRequest } = useRequestHelper();
-  const { filters, display, viewId } = useListView();
+  const { filters, display, viewId, setViewId } = useListView();
 
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,7 +103,8 @@ export function ViewBarActions({
         projectKey={projectKey}
         // Straight into the new view rather than leaving the old one's marker
         // on the URL, which would offer to update a view nobody is looking at.
-        onSaved={(view) => router.push(`${pathname}?${current}${current ? "&" : ""}view=${view.id}`)}
+        // Only the marker moves: the list on screen is already the one saved.
+        onSaved={(view) => setViewId(view.id)}
       />
     </>
   );
@@ -118,16 +118,12 @@ export function ViewBarActions({
  * offering to write it back.
  */
 export function ActiveViewChip({ views }: { views: SavedViewDto[] }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { filters, display, viewId } = useListView();
+  const { viewId, setViewId } = useListView();
 
   const active = views.find((view) => view.id === viewId);
   if (!active) {
     return null;
   }
-
-  const query = toListQuery(filters, display);
 
   return (
     <div className="flex h-6 flex-none items-center overflow-hidden rounded-md border border-line-focus text-115">
@@ -135,7 +131,9 @@ export function ActiveViewChip({ views }: { views: SavedViewDto[] }) {
       <button
         type="button"
         aria-label={`Leave the view ${active.name}`}
-        onClick={() => router.push(query ? `${pathname}?${query}` : pathname)}
+        // Drops the marker and nothing else. The list stays exactly as it is —
+        // what changes is that the bar stops offering to write it back.
+        onClick={() => setViewId(null)}
         className="flex h-full items-center border-l border-line px-[7px] text-ink-7 hover:text-ink-2"
       >
         ×
