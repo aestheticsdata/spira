@@ -1,6 +1,5 @@
+import { archiveIssue } from "@e2e/api";
 import { expect, test } from "@playwright/test";
-
-import type { Page } from "@playwright/test";
 
 /**
  * The two ways to file an issue (SPI-27): the dialog, which sets every
@@ -15,22 +14,6 @@ import type { Page } from "@playwright/test";
 const RUN = String(Date.now()).slice(-4);
 
 test.describe.configure({ mode: "serial" });
-
-/**
- * Archives through the API rather than the UI: there is no archive control on
- * an issue yet (that is the detail page's own ticket), and the session cookie
- * Playwright already holds is enough. The CSRF token has to be fetched the same
- * way the browser fetches it.
- */
-async function archiveIssue(page: Page, identifier: string) {
-  const csrf = await page.request.get("/api/users/csrf");
-  const { csrfToken } = (await csrf.json()) as { csrfToken: string };
-
-  const response = await page.request.delete(`/api/issues/${identifier}`, {
-    headers: { "x-csrf-token": csrfToken },
-  });
-  expect(response.ok()).toBeTruthy();
-}
 
 test("c opens the dialog, which files an issue with every property set", async ({ page }) => {
   const title = `Dialog fixture ${RUN}`;

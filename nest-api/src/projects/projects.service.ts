@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
+import { archivedAtFor } from "@config/archive.util";
 import { CreateProjectDto } from "@projects/dto/create-project.dto";
 import { UpdateProjectDto } from "@projects/dto/update-project.dto";
 import {
@@ -45,14 +46,6 @@ function toDate(value: string | null | undefined): Date | null | undefined {
     return value;
   }
   return new Date(value);
-}
-
-function archivedAtFor(archived: boolean | undefined, current: Date | null): Date | null | undefined {
-  if (archived === undefined) {
-    return undefined;
-  }
-  // Re-archiving an archived project must not move the timestamp.
-  return archived ? (current ?? new Date()) : null;
 }
 
 function countsByProject(rows: readonly { projectId: string; _count: { _all: number } }[]): Map<string, number> {

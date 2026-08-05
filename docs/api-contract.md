@@ -89,6 +89,9 @@ interface IssueListItemDto {
   /** Only for epics: children completed / children total. */
   epicProgress: { done: number; total: number } | null;
   sortOrder: number;
+  /** Non-null once archived. Always null on a list row, since lists exclude
+   *  archived issues by default; the detail route returns them either way. */
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -186,7 +189,17 @@ List filters (all optional, all repeatable where plural):
 `orderBy` (`manual` | `created` | `updated` | `priority` | `title`, default `manual`).
 
 `CreateIssueDto`: `{ projectKey, title, description?, stateId?, priority?, isEpic?, epicId?, labelIds?[] }`.
-`UpdateIssueDto`: every field of the above except `projectKey`, all optional.
+`UpdateIssueDto`: every field of the above except `projectKey`, all optional, plus `archived?: boolean`.
+
+An issue never changes project: the identifier was allocated from the project's counter and is
+stored, so moving one would either break the identifier or lie about it.
+
+`labelIds` is the whole set, not a delta — the service replaces the join rows with what it is sent.
+
+**Archiving.** `DELETE /issues/:identifier` archives, and there is no un-DELETE, so restoring rides
+on `PATCH { archived: false }` the way it does for projects. Re-archiving an archived issue leaves
+`archivedAt` where it was: the column records when the issue left, and a second PATCH is not a
+second departure.
 
 **Identifier allocation** happens inside the create transaction: `SELECT ... FOR UPDATE` on the
 project row, increment `issueCounter`, write `{key}-{counter}`. This survives concurrent creates and

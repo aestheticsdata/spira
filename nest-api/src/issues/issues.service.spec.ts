@@ -464,6 +464,43 @@ describe("IssuesService", () => {
     });
   });
 
+  describe("update — archive and restore", () => {
+    it("stamps archivedAt when asked to archive", async () => {
+      issues = [issueRow()];
+
+      await service.update("PFA-12", { archived: true });
+
+      expect(lastData(prisma.issue.update).archivedAt).toBeInstanceOf(Date);
+    });
+
+    it("keeps the original timestamp when an archived issue is archived again", async () => {
+      // The column records when the issue left, and a second PATCH is not a
+      // second departure.
+      const original = new Date("2026-01-02T03:04:05.000Z");
+      issues = [issueRow({ archivedAt: original })];
+
+      await service.update("PFA-12", { archived: true });
+
+      expect(lastData(prisma.issue.update).archivedAt).toBe(original);
+    });
+
+    it("clears archivedAt on a restore", async () => {
+      issues = [issueRow({ archivedAt: new Date("2026-01-02T03:04:05.000Z") })];
+
+      await service.update("PFA-12", { archived: false });
+
+      expect(lastData(prisma.issue.update).archivedAt).toBeNull();
+    });
+
+    it("leaves the column alone when the field is absent", async () => {
+      issues = [issueRow({ archivedAt: new Date("2026-01-02T03:04:05.000Z") })];
+
+      await service.update("PFA-12", { title: "Ship it later" });
+
+      expect(lastData(prisma.issue.update)).toEqual({ title: "Ship it later" });
+    });
+  });
+
   describe("epicProgress", () => {
     it("counts children whose state is completed", async () => {
       issues = [issueRow({ id: "epic-1", identifier: "PFA-1", isEpic: true })];

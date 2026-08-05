@@ -1,3 +1,5 @@
+import { EditableIssueTitle } from "@components/issues/editable-issue-title";
+import { IssueArchiveControl } from "@components/issues/issue-archive";
 import { IssueProperties } from "@components/issues/issue-properties";
 import { IssueRelations } from "@components/issues/issue-relations";
 import { EditableDescription } from "@components/markdown/editable-description";
@@ -5,11 +7,11 @@ import { Markdown } from "@components/markdown/markdown";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
 import { EpicGlyph } from "@components/ui/epic-glyph";
-import { serverFetchOptional } from "@lib/server-api";
+import { serverFetch, serverFetchOptional } from "@lib/server-api";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
-import type { IssueDetailDto } from "@lib/api-types";
+import type { IssueDetailDto, IssueListItemDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
 
 export default async function IssuePage({ params }: { params: Promise<{ identifier: string }> }) {
   const { identifier } = await params;
@@ -25,6 +27,15 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
   if (issue.canonicalIdentifier !== issue.requestedIdentifier.toUpperCase()) {
     permanentRedirect(ROUTES.issue.path(issue.canonicalIdentifier));
   }
+
+  // What the properties panel offers, fetched here rather than by the panel:
+  // the page is already awaiting the API, and a rail that has to load before it
+  // can be used is a rail you wait for on every issue you open.
+  const [states, labels, epics] = await Promise.all([
+    serverFetch<WorkflowStateDto[]>("/states"),
+    serverFetch<LabelDto[]>("/labels"),
+    serverFetch<IssueListItemDto[]>(`/issues?project=${issue.project.key}&isEpic=true`),
+  ]);
 
   const hasRelations = issue.relations.blockedBy.length > 0 || issue.relations.blocks.length > 0;
 
@@ -49,9 +60,16 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
               )}
             </div>
 
-            <h1 className="text-25 leading-[1.25] font-semibold tracking-title text-ink-1 text-pretty">
-              {issue.title}
-            </h1>
+            {issue.archivedAt && (
+              <div className="mb-4 rounded-lg border border-dashed border-line-strong bg-surface-hi px-3 py-2.5 text-125 text-ink-5">
+                Archived. It is off every list and every filter; restoring it from the panel puts it back where it was.
+              </div>
+            )}
+
+            <EditableIssueTitle
+              identifier={issue.identifier}
+              title={issue.title}
+            />
 
             {issue.epic && (
               <Link
@@ -76,7 +94,15 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
         </div>
 
         <aside className="sp-scroll w-[300px] flex-none overflow-y-auto px-5 py-6">
-          <IssueProperties issue={issue} />
+          <IssueProperties
+            issue={issue}
+            states={states}
+            labels={labels}
+            epics={epics}
+          />
+
+          <div className="my-4 h-px bg-line-chrome" />
+          <IssueArchiveControl issue={issue} />
 
           {hasRelations && (
             <>

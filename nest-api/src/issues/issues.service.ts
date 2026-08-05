@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "../../generated/prisma/client";
+import { archivedAtFor } from "@config/archive.util";
 import { formatIdentifier } from "@issues/identifier.util";
 import { normaliseRelation } from "@issues/relations.util";
 import { CreateIssueDto } from "@issues/dto/create-issue.dto";
@@ -51,6 +52,7 @@ const issueWriteSelect = {
   stateId: true,
   isEpic: true,
   epicId: true,
+  archivedAt: true,
   epic: { select: { identifier: true } },
 } satisfies Prisma.IssueSelect;
 
@@ -304,6 +306,11 @@ export class IssuesService {
       data.stateId = state.id;
       data.completedAt = timestamps.completedAt;
       data.canceledAt = timestamps.canceledAt;
+    }
+
+    const archivedAt = archivedAtFor(dto.archived, issue.archivedAt);
+    if (archivedAt !== undefined) {
+      data.archivedAt = archivedAt;
     }
 
     await this.prisma.issue.update({ where: { id: issue.id }, data });
@@ -574,6 +581,7 @@ export class IssuesService {
       },
       epicProgress: issue.isEpic ? (progress.get(issue.id) ?? { done: 0, total: 0 }) : null,
       sortOrder: issue.sortOrder,
+      archivedAt: issue.archivedAt?.toISOString() ?? null,
       createdAt: issue.createdAt.toISOString(),
       updatedAt: issue.updatedAt.toISOString(),
     };
