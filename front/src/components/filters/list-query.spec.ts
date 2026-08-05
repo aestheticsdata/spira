@@ -51,6 +51,18 @@ describe("normaliseListQuery", () => {
 
     expect(normaliseListQuery(once)).toBe(once);
   });
+
+  it("keeps `hasEpic=false`, which is a filter and not an absence", () => {
+    // "In no epic" is a real ask. Anything that treated the value as falsy and
+    // dropped the key would turn it into "in any epic" with nothing to show
+    // for it — the single most dangerous silent change in this module.
+    expect(normaliseListQuery("hasEpic=false")).toBe("hasEpic=false");
+    expect(normaliseListQuery("hasEpic=true")).toBe("hasEpic=true");
+  });
+
+  it("keeps `empty=false` out, because there it really is the default", () => {
+    expect(normaliseListQuery("empty=false")).toBe("");
+  });
 });
 
 describe("sameListQuery", () => {

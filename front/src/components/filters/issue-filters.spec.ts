@@ -44,6 +44,37 @@ describe("parseIssueFilters", () => {
     expect(parseIssueFilters(url("priority=0,4,9,-1,x")).priorities).toEqual([0, 4]);
   });
 
+  /**
+   * The rules below were true but unpinned. They are the ones a different
+   * parsing library gets wrong quietly rather than loudly, so they are written
+   * down here before anything reads the URL differently.
+   */
+
+  it("refuses a fractional priority outright rather than truncating it", () => {
+    // `Number()` guarded by `Number.isInteger`, not `parseInt` — which would
+    // turn 2.5 into a real priority 2 and 4abc into 4.
+    expect(parseIssueFilters(url("priority=2.5")).priorities).toEqual([]);
+    expect(parseIssueFilters(url("priority=4abc")).priorities).toEqual([]);
+  });
+
+  it("treats a leading zero as the same priority, not a second one", () => {
+    expect(parseIssueFilters(url("priority=1,01")).priorities).toEqual([1]);
+  });
+
+  it("sorts priorities numerically, unlike every other list here", () => {
+    expect(parseIssueFilters(url("priority=4,1,2")).priorities).toEqual([1, 2, 4]);
+  });
+
+  it("sorts id lists lexically", () => {
+    // Invisible with uuids, which is why it went unpinned — but a list that
+    // re-sorted differently would make a saved view stop matching its own URL.
+    expect(parseIssueFilters(url("state=10,9,2")).states).toEqual(["10", "2", "9"]);
+  });
+
+  it("reads an empty array from Next as no filter at all", () => {
+    expect(parseIssueFilters({ state: [] }).states).toEqual([]);
+  });
+
   it("keeps include and exclude labels apart", () => {
     const filters = parseIssueFilters(url("label=a&excludeLabel=b"));
 
@@ -71,6 +102,21 @@ describe("parseIssueFilters", () => {
 
     it("lets a named epic win over a cardinality, since it is the narrower ask", () => {
       expect(parseIssueFilters(url("epic=PFA-1&hasEpic=true")).epic).toEqual({ kind: "is", identifier: "PFA-1" });
+    });
+
+    it("skips a blank arm and falls through to the next one", () => {
+      // A cleared filter leaves `epic=` behind in some hand-edited URLs; an
+      // empty identifier is not an epic, so the cardinality still answers.
+      expect(parseIssueFilters(url("epic=&hasEpic=true")).epic).toEqual({ kind: "any" });
+      expect(parseIssueFilters(url("epic=&excludeEpic=PFA-1")).epic).toEqual({ kind: "isNot", identifier: "PFA-1" });
+    });
+
+    it("reads hasEpic exactly — untrimmed and case-sensitive", () => {
+      // Deliberately unlike `empty` and `legacy`, which go through `booleanFrom`
+      // and are trimmed and lowercased. Pinned because a parser that trimmed
+      // here would make a URL that is inert today start filtering.
+      expect(parseIssueFilters(url("hasEpic=TRUE")).epic).toBeNull();
+      expect(parseIssueFilters(url("hasEpic=%20true")).epic).toBeNull();
     });
   });
 });
