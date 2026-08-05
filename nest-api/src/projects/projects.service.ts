@@ -8,7 +8,12 @@ import {
 } from "@nestjs/common";
 import { CreateProjectDto } from "@projects/dto/create-project.dto";
 import { UpdateProjectDto } from "@projects/dto/update-project.dto";
-import { normaliseProjectKey, suggestProjectKey } from "@projects/project-key.util";
+import {
+  RESERVED_PROJECT_KEYS,
+  isReservedProjectKey,
+  normaliseProjectKey,
+  suggestProjectKey,
+} from "@projects/project-key.util";
 import { PrismaService } from "../prisma/prisma.service";
 
 import type { Project, WorkflowState } from "../../generated/prisma/client";
@@ -266,6 +271,15 @@ export class ProjectsService {
     if (ALL_DIGITS.test(key)) {
       throw new BadRequestException(
         `"${key}" is all digits, so "${key}-1" would read as an issue number. Choose another key: 1991chat uses CHT.`,
+      );
+    }
+
+    // A project is reached at /<key>/issues, so a key that matches a static
+    // route segment makes the project unreachable — a 404 that no amount of
+    // looking at the project would explain.
+    if (isReservedProjectKey(key)) {
+      throw new BadRequestException(
+        `"${key}" is reserved by the app's own routes. Reserved keys: ${RESERVED_PROJECT_KEYS.join(", ")}.`,
       );
     }
   }

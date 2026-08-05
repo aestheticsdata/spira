@@ -1,10 +1,13 @@
 import { Markdown } from "@components/markdown/markdown";
+import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
 import { ProjectTabs } from "@components/shell/project-tabs";
+import { Button } from "@components/ui/button";
 import { ProgressBar } from "@components/ui/progress-pill";
 import { ProjectIcon } from "@components/ui/project-icon";
 import { StateIcon } from "@components/ui/state-icon";
 import { serverFetchOptional } from "@lib/server-api";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import type { ProjectDto } from "@lib/api-types";
@@ -28,6 +31,15 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
       <AppHeader
         project={project}
         leaf="Overview"
+        actions={
+          <Button
+            asChild
+            variant="outline"
+            size="xs"
+          >
+            <Link href={ROUTES.projectEdit.path(project.key)}>Edit</Link>
+          </Button>
+        }
       />
       <ProjectTabs projectKey={project.key} />
 

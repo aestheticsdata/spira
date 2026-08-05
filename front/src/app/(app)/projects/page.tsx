@@ -1,5 +1,6 @@
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
+import { Button } from "@components/ui/button";
 import { ProgressBar } from "@components/ui/progress-pill";
 import { ProjectIcon } from "@components/ui/project-icon";
 import { StateIcon } from "@components/ui/state-icon";
@@ -20,13 +21,24 @@ export default async function ProjectsPage() {
 
   return (
     <>
-      <AppHeader leaf="All projects" />
+      <AppHeader
+        leaf="All projects"
+        actions={
+          <Button
+            asChild
+            variant="primary"
+            size="xs"
+          >
+            <Link href={ROUTES.projectNew.path}>New project</Link>
+          </Button>
+        }
+      />
 
       {projects.length === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5">
           <p className="text-135 text-ink-7">Nothing here yet — Spira starts with a project.</p>
           <Link
-            href="/projects/new"
+            href={ROUTES.projectNew.path}
             className="text-125"
           >
             Create the first one
