@@ -1,5 +1,6 @@
 "use client";
 
+import { countedIssues } from "@components/issues/epic-children.util";
 import { toggleLabel } from "@components/issues/issue-form.util";
 import { parentEpicOptions, typeChangeBlocker } from "@components/issues/issue-properties.util";
 import { EpicGlyph } from "@components/ui/epic-glyph";
@@ -320,7 +321,7 @@ export function IssueProperties({
             <span className="block size-[11px] rounded-[3px] border-[1.5px] border-glyph" />
           )}
         </span>
-        {issue.isEpic ? `Epic · ${issue.epicProgress?.total ?? 0} issues` : "Issue"}
+        {issue.isEpic ? `Epic · ${countedIssues(issue.epicProgress?.total ?? 0)}` : "Issue"}
       </PropertyMenu>
 
       <PropertyMenu

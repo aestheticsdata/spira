@@ -1,4 +1,5 @@
 import { EditableIssueTitle } from "@components/issues/editable-issue-title";
+import { EpicChildren } from "@components/issues/epic-children";
 import { IssueArchiveControl } from "@components/issues/issue-archive";
 import { IssueProperties } from "@components/issues/issue-properties";
 import { IssueRelations } from "@components/issues/issue-relations";
@@ -6,9 +7,7 @@ import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
-import { EpicGlyph } from "@components/ui/epic-glyph";
 import { serverFetch, serverFetchOptional } from "@lib/server-api";
-import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import type { IssueDetailDto, IssueListItemDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
@@ -28,19 +27,28 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
     permanentRedirect(ROUTES.issue.path(issue.canonicalIdentifier));
   }
 
-  // What the properties panel offers, fetched here rather than by the panel:
-  // the page is already awaiting the API, and a rail that has to load before it
-  // can be used is a rail you wait for on every issue you open.
-  const [states, labels, epics] = await Promise.all([
+  // What the properties panel offers — and, for an epic, what it contains and
+  // what could go into it. Fetched here rather than by the components: the page
+  // is already awaiting the API, and a rail that has to load before it can be
+  // used is a rail you wait for on every issue you open.
+  const [states, labels, epics, contained, candidates] = await Promise.all([
     serverFetch<WorkflowStateDto[]>("/states"),
     serverFetch<LabelDto[]>("/labels"),
     serverFetch<IssueListItemDto[]>(`/issues?project=${issue.project.key}&isEpic=true`),
+    issue.isEpic ? serverFetch<IssueListItemDto[]>(`/issues?epic=${issue.identifier}`) : [],
+    // Issues in no epic at all, rather than every issue in the project: an epic
+    // cannot hold another epic, and one already inside a different epic is
+    // moved from its own panel, where the epic it is leaving is on screen.
+    issue.isEpic
+      ? serverFetch<IssueListItemDto[]>(`/issues?project=${issue.project.key}&isEpic=false&hasEpic=false`)
+      : [],
   ]);
 
   return (
     <>
       <AppHeader
         project={issue.project}
+        epic={issue.epic}
         leaf={issue.identifier}
       />
       <div className="flex min-h-0 flex-1">
@@ -69,16 +77,10 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
               title={issue.title}
             />
 
-            {issue.epic && (
-              <Link
-                href={ROUTES.issue.path(issue.epic.identifier)}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface-hi py-[5px] pr-[11px] pl-2 hover:border-line-focus"
-              >
-                <EpicGlyph size={13} />
-                <span className="identifier text-105 text-ink-link">{issue.epic.identifier}</span>
-                <span className="text-125 text-ink-4">{issue.epic.title}</span>
-              </Link>
-            )}
+            {/* The epic used to be repeated here as a card. It is now a crumb
+                in the header, which is where a container belongs and leaves the
+                properties rail as the only other place it appears — two, rather
+                than three, copies of the same one-word fact. */}
 
             <div className="mt-[30px]">
               <EditableDescription
@@ -88,6 +90,15 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
                 <Markdown source={issue.description ?? ""} />
               </EditableDescription>
             </div>
+
+            {issue.isEpic && (
+              <EpicChildren
+                epic={issue}
+                contained={contained}
+                states={states}
+                candidates={candidates}
+              />
+            )}
           </div>
         </div>
 
