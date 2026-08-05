@@ -7,9 +7,14 @@ import { expect, test } from "@playwright/test";
  * again — clearing stores `null`, which is exactly what it found. Nothing is
  * left behind, unlike the project spec, where archiving is the only way out.
  */
-const BODY = ["## Ingestion", "", "Ships behind SPI-24, which owns the renumbering.", "", "- ECS logs", "- Retention"].join(
-  "\n",
-);
+const BODY = [
+  "## Ingestion",
+  "",
+  "Ships behind SPI-24, which owns the renumbering.",
+  "",
+  "- ECS logs",
+  "- Retention",
+].join("\n");
 
 test("writes a description, previews it live, then clears it", async ({ page }) => {
   await page.goto("/issue/IKN-2/");
