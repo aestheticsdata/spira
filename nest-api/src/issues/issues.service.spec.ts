@@ -125,6 +125,12 @@ function lastData(mock: jest.Mock): Record<string, unknown> {
   return calls[calls.length - 1][0].data;
 }
 
+/** The `where` clause of the last call to a Prisma read mock. */
+function lastWhere(mock: jest.Mock): Record<string, unknown> {
+  const calls = mock.mock.calls as [{ where: Record<string, unknown> }][];
+  return calls[calls.length - 1][0].where;
+}
+
 describe("IssuesService", () => {
   let service: IssuesService;
   let prisma: PrismaMock;
@@ -165,6 +171,92 @@ describe("IssuesService", () => {
     }).compile();
 
     service = moduleRef.get(IssuesService);
+  });
+
+  describe("list — filters", () => {
+    const EPIC = issueRow({ id: "issue-epic", identifier: "PFA-1", number: 1, isEpic: true });
+
+    it("hides archived issues unless asked", async () => {
+      await service.list({});
+      expect(lastWhere(prisma.issue.findMany).archivedAt).toBeNull();
+
+      await service.list({ includeArchived: true });
+      expect(lastWhere(prisma.issue.findMany)).not.toHaveProperty("archivedAt");
+    });
+
+    it("takes states and priorities as sets", async () => {
+      await service.list({ state: ["state-a", "state-b"], priority: [1, 2] });
+
+      const where = lastWhere(prisma.issue.findMany);
+      expect(where.stateId).toEqual({ in: ["state-a", "state-b"] });
+      expect(where.priority).toEqual({ in: [1, 2] });
+    });
+
+    it("combines label include and exclude in one clause", async () => {
+      await service.list({ label: ["label-a"], excludeLabel: ["label-b"] });
+
+      expect(lastWhere(prisma.issue.findMany).labels).toEqual({
+        some: { labelId: { in: ["label-a"] } },
+        none: { labelId: { in: ["label-b"] } },
+      });
+    });
+
+    it("filters to issues in no epic at all", async () => {
+      await service.list({ hasEpic: false });
+      expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ epicId: null }]);
+    });
+
+    it("filters to issues that sit in some epic", async () => {
+      await service.list({ hasEpic: true });
+      expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ epicId: { not: null } }]);
+    });
+
+    it("resolves the named epic and filters on its id", async () => {
+      issues = [EPIC];
+      await service.list({ epic: "PFA-1" });
+
+      expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ epicId: EPIC.id }]);
+    });
+
+    it("returns nothing for an epic that does not exist, without querying", async () => {
+      issues = [];
+      prisma.issue.findMany.mockClear();
+
+      expect(await service.list({ epic: "PFA-999" })).toEqual([]);
+      expect(prisma.issue.findMany).not.toHaveBeenCalled();
+    });
+
+    it("keeps epic-less issues when excluding an epic", async () => {
+      // The point of the whole clause: in SQL `epicId <> 'x'` is NULL, not true,
+      // for a row with no epic, so the terse form would drop exactly the issues
+      // a user asking "not in PFA-1" still expects to see.
+      issues = [EPIC];
+      await service.list({ excludeEpic: "PFA-1" });
+
+      expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ OR: [{ epicId: null }, { epicId: { not: EPIC.id } }] }]);
+    });
+
+    it("excludes nothing when the excluded epic does not exist", async () => {
+      issues = [];
+      await service.list({ excludeEpic: "PFA-999" });
+
+      expect(lastWhere(prisma.issue.findMany)).not.toHaveProperty("AND");
+    });
+
+    it("composes the epic arms instead of letting one overwrite another", async () => {
+      issues = [EPIC];
+      await service.list({ hasEpic: true, excludeEpic: "PFA-1" });
+
+      expect(lastWhere(prisma.issue.findMany).AND).toEqual([
+        { epicId: { not: null } },
+        { OR: [{ epicId: null }, { epicId: { not: EPIC.id } }] },
+      ]);
+    });
+
+    it("leaves the epic clause off entirely when nothing asks for one", async () => {
+      await service.list({ project: "PFA" });
+      expect(lastWhere(prisma.issue.findMany)).not.toHaveProperty("AND");
+    });
   });
 
   describe("create", () => {

@@ -185,8 +185,23 @@ A key already in use answers 409; the create/edit form shows it against the key 
 
 List filters (all optional, all repeatable where plural):
 `project` (key), `state` (id, repeatable), `label` (id, repeatable), `excludeLabel` (id, repeatable),
-`priority` (int, repeatable), `epic` (identifier), `isEpic` (bool), `includeArchived` (bool, default false),
+`priority` (int, repeatable), `epic` (identifier), `excludeEpic` (identifier), `hasEpic` (bool),
+`isEpic` (bool), `includeArchived` (bool, default false),
 `orderBy` (`manual` | `created` | `updated` | `priority` | `title`, default `manual`).
+
+The four epic arms compose through `AND`, so they can be combined rather than overwriting each other:
+
+| arm | params |
+| --- | --- |
+| is | `epic=PFA-1` |
+| is not | `excludeEpic=PFA-1` |
+| any | `hasEpic=true` |
+| none | `hasEpic=false` |
+
+`excludeEpic` **keeps** issues that belong to no epic — "not in PFA-1" is true of an issue with no
+epic at all, even though the SQL comparison against NULL is not. `epic` naming an identifier that
+does not resolve returns `[]` (an epic that does not exist has no children); `excludeEpic` naming
+one excludes nothing.
 
 `CreateIssueDto`: `{ projectKey, title, description?, stateId?, priority?, isEpic?, epicId?, labelIds?[] }`.
 `UpdateIssueDto`: every field of the above except `projectKey`, all optional, plus `archived?: boolean`.

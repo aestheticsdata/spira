@@ -164,12 +164,35 @@ export class IssuesService {
         ...(query.excludeLabel?.length ? { none: { labelId: { in: query.excludeLabel } } } : {}),
       };
     }
+    // The epic filter's four arms compose through AND rather than by assigning
+    // `where.epicId` three times over, so "in no epic" and "not in FOO" can be
+    // asked together without one silently overwriting the other.
+    const epicClauses: Prisma.IssueWhereInput[] = [];
+
+    if (query.hasEpic !== undefined) {
+      epicClauses.push({ epicId: query.hasEpic ? { not: null } : null });
+    }
     if (query.epic) {
       const epicId = await this.resolveIssueId(query.epic);
       if (!epicId) {
         return [];
       }
-      where.epicId = epicId;
+      epicClauses.push({ epicId });
+    }
+    if (query.excludeEpic) {
+      const epicId = await this.resolveIssueId(query.excludeEpic);
+      // An identifier that resolves to nothing excludes nothing — unlike `epic`
+      // above, where an unresolvable epic has no children by definition.
+      if (epicId) {
+        // Spelt out rather than left to `{ not: epicId }`: in SQL a comparison
+        // against NULL is NULL, not true, so the terse form would quietly drop
+        // every issue that belongs to no epic at all — which is exactly the set
+        // a user asking "not in FOO" expects to keep.
+        epicClauses.push({ OR: [{ epicId: null }, { epicId: { not: epicId } }] });
+      }
+    }
+    if (epicClauses.length > 0) {
+      where.AND = epicClauses;
     }
 
     const rows = await this.prisma.issue.findMany({
