@@ -21,7 +21,7 @@ export const ISSUE_ORDER_BY = ["manual", "created", "updated", "priority", "titl
 export type IssueOrderBy = (typeof ISSUE_ORDER_BY)[number];
 
 /** A repeatable param arrives as one string, an array, or a comma-joined list. */
-function toList({ value }: TransformFnParams): string[] | undefined {
+export function toList({ value }: TransformFnParams): string[] | undefined {
   if (value === undefined || value === null || value === "") {
     return undefined;
   }
@@ -38,7 +38,7 @@ function toIntList(params: TransformFnParams): number[] | undefined {
   return toList(params)?.map((entry) => Number(entry));
 }
 
-function toBoolean({ value }: TransformFnParams): boolean | undefined {
+export function toBoolean({ value }: TransformFnParams): boolean | undefined {
   if (value === undefined || value === null || value === "") {
     return undefined;
   }

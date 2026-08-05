@@ -117,6 +117,10 @@ model Issue {
   @@index([stateId])
   @@index([epicId])
   @@index([projectId, sortOrder])
+  /// Declared here rather than only in a hand-written migration: an index the
+  /// schema does not know about is drift, and the next `migrate dev` for an
+  /// unrelated model drops it. The search service reads it with MATCH … AGAINST.
+  @@fulltext([title, description])
 }
 
 model IssueLabel {
@@ -153,13 +157,16 @@ model SavedView {
   icon      String? @db.VarChar(40)
   /// null = workspace-wide
   projectId String? @db.Char(36)
-  /// serialised filter set
-  filters   Json
-  groupBy   String  @db.VarChar(20)
-  orderBy   String  @db.VarChar(20)
+  /// The list's URL query string, stored whole and canonical: filters,
+  /// grouping, ordering and columns, in exactly the keys the address bar
+  /// carries. One column rather than a JSON blob beside denormalised `groupBy`
+  /// and `orderBy` copies — the query *is* the view, and splitting it would be
+  /// a second shape to keep in step with the one the front already writes.
+  query     String  @db.VarChar(2000)
   position  Int
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 

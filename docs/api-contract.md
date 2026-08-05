@@ -117,6 +117,21 @@ interface SearchResultDto {
   state: WorkflowStateDto;
   matchedOn: "identifier" | "legacy" | "text";
 }
+
+interface SavedViewDto {
+  id: string;
+  name: string;
+  icon: string | null;
+  /** Null for a workspace-wide view. */
+  project: ProjectSummaryDto | null;
+  /** The canonical list query; null when the stored one no longer validates. */
+  query: string | null;
+  position: number;
+  /** Why it no longer validates, or null when it does. */
+  invalid: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 ```
 
 ## Routes
@@ -241,3 +256,43 @@ Matching order, identifier hits always ranked above text hits:
 2. exact `legacyIdentifier` — also populates `legacyResolved`
 3. prefix on either identifier column
 4. MySQL `FULLTEXT` on `(title, description)`, falling back to `LIKE %q%` for queries under 3 characters
+
+### Saved views — `src/views`
+
+| Verb | Path | Body / Query | Returns |
+|---|---|---|---|
+| GET | `/views` | `?project=SPI` | `SavedViewDto[]`, workspace views first, then each project's, by `position` |
+| POST | `/views` | `{ name, icon?, projectKey?, query }` | `SavedViewDto` |
+| PATCH | `/views/:id` | `{ name?, icon?, query?, position? }` | `SavedViewDto` |
+| DELETE | `/views/:id` | — | `{ ok: true }` |
+
+`?project=SPI` returns that project's views **and** the workspace's, because both apply on a project
+page; without it every view comes back. `projectKey` on create scopes the view — omitted or null
+makes it workspace-wide. The scope cannot be PATCHed: a view's project is half of what it means, and
+widening one silently would change every list it draws.
+
+**A view is a stored query string, not a schema of its own.** `query` is the list URL's own query —
+`state=…&priority=1&group=epic&cols=identifier,status` — kept whole. Saving a view is persisting the
+current query; opening one is pushing it back into the URL. That is only possible because the filter
+keys the front writes to the address bar are already the keys `GET /issues` takes (see Issues), so
+there is no translation layer and nothing to keep in step.
+
+The vocabulary a view may use is `IssuesQueryDto` **extended** with the display half — `group`,
+`order`, `cols`, `empty`, `legacy` — rather than restated. Adding a filter to the issues endpoint
+adds it to views by construction. Two inherited keys are refused:
+
+| Refused | Why |
+|---|---|
+| `project` | the scope is a column; a view stored against SPI whose query said `project=PFA` would be two answers to one question |
+| `orderBy` | the same choice as `order`, spelt the way the endpoint takes it rather than the way the URL writes it — accepting both would let a view disagree with itself |
+
+What is stored is **canonical**: keys alphabetical, lists sorted and de-duplicated, empty values
+dropped, `?` stripped. `?state=b,a` and `?state=a&state=b` store the same string. A client comparing
+"has this view changed?" should compare the two queries *parsed*, not as text — the API's key order is
+alphabetical and the front's serialiser writes its own.
+
+Validation runs on **write and on read**. On write a query that could not be replayed is a 400 before
+anything is stored. On read a view whose query no longer validates comes back with `query: null` and
+`invalid` set to the reason, rather than throwing — a view outlives the vocabulary it was saved
+against, and one stale row must not take the whole sidebar down with it. An unknown key is an error,
+not something ignored: that is the case the rule exists for.

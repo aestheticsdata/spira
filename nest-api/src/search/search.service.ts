@@ -118,9 +118,10 @@ export class SearchService {
   }
 
   /**
-   * Null means the FULLTEXT pass could not run — the index is added by a
-   * hand-appended migration, and MySQL rejects MATCH outright when it is
-   * missing rather than degrading. The caller falls back to LIKE.
+   * Null means the FULLTEXT pass could not run: MySQL rejects `MATCH` outright
+   * when the index is missing rather than degrading to a scan, so the caller
+   * falls back to LIKE. The index is `@@fulltext` on the Issue model — it used
+   * to be appended by hand, which is how an unrelated migration once dropped it.
    */
   private async fullTextIds(term: string, limit: number): Promise<string[] | null> {
     try {

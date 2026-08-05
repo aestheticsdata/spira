@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 
-import type { IssueDetailDto, IssueListItemDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
-import type { Page } from "@playwright/test";
+import type { IssueDetailDto, IssueListItemDto, LabelDto, SavedViewDto, WorkflowStateDto } from "@lib/api-types";
+import type { APIResponse, Page } from "@playwright/test";
 
 /**
  * Talking to the API with the session Playwright already holds.
@@ -81,6 +81,40 @@ export async function createLabel(page: Page, name: string, color = "#7c3aed"): 
 
 export async function deleteLabel(page: Page, id: string): Promise<void> {
   const response = await page.request.delete(`/api/labels/${id}`, {
+    headers: { "x-csrf-token": await csrfToken(page) },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
+export interface CreateViewBody {
+  name: string;
+  icon?: string;
+  projectKey?: string;
+  query: string;
+}
+
+/** Returns the raw response: some specs are about the refusal, not the view. */
+export async function postView(page: Page, body: CreateViewBody): Promise<APIResponse> {
+  return page.request.post("/api/views", {
+    headers: { "x-csrf-token": await csrfToken(page) },
+    data: body,
+  });
+}
+
+export async function createView(page: Page, body: CreateViewBody): Promise<SavedViewDto> {
+  const response = await postView(page, body);
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()) as SavedViewDto;
+}
+
+export async function fetchViews(page: Page, projectKey?: string): Promise<SavedViewDto[]> {
+  const response = await page.request.get(projectKey ? `/api/views?project=${projectKey}` : "/api/views");
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()) as SavedViewDto[];
+}
+
+export async function deleteView(page: Page, id: string): Promise<void> {
+  const response = await page.request.delete(`/api/views/${id}`, {
     headers: { "x-csrf-token": await csrfToken(page) },
   });
   expect(response.ok()).toBeTruthy();
