@@ -1,3 +1,4 @@
+import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
@@ -93,11 +94,14 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
 
           <section className="mt-[34px]">
             <h2 className="mb-[18px] text-11 font-semibold tracking-section text-ink-8">DESCRIPTION</h2>
-            {project.description ? (
-              <Markdown source={project.description} />
-            ) : (
-              <p className="text-14 leading-[1.65] text-ink-7">No description yet.</p>
-            )}
+            {/* The one field the create/edit form deliberately leaves out: the
+                description is written here, against its rendered self. */}
+            <EditableDescription
+              endpoint={`/projects/${project.key}`}
+              source={project.description}
+            >
+              <Markdown source={project.description ?? ""} />
+            </EditableDescription>
           </section>
         </div>
       </div>

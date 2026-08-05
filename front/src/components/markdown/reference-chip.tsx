@@ -28,7 +28,7 @@ export async function ReferenceChip({ identifier }: { identifier: string }) {
         state={issue.state}
         size={11}
       />
-      <span className="identifier text-11 text-ink-link">{issue.identifier}</span>
+      <span className="identifier shrink-0 whitespace-nowrap text-11 text-ink-link">{issue.identifier}</span>
       <span className="min-w-0 truncate text-12 text-ink-4">{issue.title}</span>
     </Link>
   );
