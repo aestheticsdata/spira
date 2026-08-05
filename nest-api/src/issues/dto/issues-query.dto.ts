@@ -1,0 +1,120 @@
+import { Transform } from "class-transformer";
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
+import { FIELD_LIMITS } from "@config/field-limits";
+import { MAX_PRIORITY, PROJECT_KEY_PATTERN } from "@issues/dto/create-issue.dto";
+
+import type { TransformFnParams } from "class-transformer";
+
+export const ISSUE_ORDER_BY = ["manual", "created", "updated", "priority", "title"] as const;
+export type IssueOrderBy = (typeof ISSUE_ORDER_BY)[number];
+
+/** A repeatable param arrives as one string, an array, or a comma-joined list. */
+function toList({ value }: TransformFnParams): string[] | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const entries = (Array.isArray(value) ? value : [value])
+    .flatMap((entry) => String(entry).split(","))
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return entries.length > 0 ? entries : undefined;
+}
+
+function toIntList(params: TransformFnParams): number[] | undefined {
+  return toList(params)?.map((entry) => Number(entry));
+}
+
+function toBoolean({ value }: TransformFnParams): boolean | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalised = String(value).trim().toLowerCase();
+  return normalised === "true" || normalised === "1";
+}
+
+/**
+ * Query params get their own transforms rather than `@config/transforms`: a
+ * filter the UI has just cleared arrives as `?project=`, and that has to mean
+ * "no filter" instead of failing the pattern.
+ */
+function toUpperCase({ value }: TransformFnParams): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim().toUpperCase();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export class IssuesQueryDto {
+  @IsOptional()
+  @Transform(toUpperCase)
+  @IsString()
+  @Matches(PROJECT_KEY_PATTERN, { message: "project must be a 2 to 5 character project key" })
+  project?: string;
+
+  @IsOptional()
+  @Transform(toList)
+  @IsArray()
+  @IsUUID("all", { each: true })
+  state?: string[];
+
+  @IsOptional()
+  @Transform(toList)
+  @IsArray()
+  @IsUUID("all", { each: true })
+  label?: string[];
+
+  @IsOptional()
+  @Transform(toList)
+  @IsArray()
+  @IsUUID("all", { each: true })
+  excludeLabel?: string[];
+
+  @IsOptional()
+  @Transform(toIntList)
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(MAX_PRIORITY, { each: true })
+  priority?: number[];
+
+  /** Live or legacy identifier of the epic whose children are wanted. */
+  @IsOptional()
+  @Transform(toUpperCase)
+  @IsString()
+  @MaxLength(FIELD_LIMITS.identifier)
+  epic?: string;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  isEpic?: boolean;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  includeArchived?: boolean;
+
+  @IsOptional()
+  @IsIn(ISSUE_ORDER_BY)
+  orderBy?: IssueOrderBy;
+}
