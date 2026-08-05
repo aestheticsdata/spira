@@ -19,6 +19,8 @@ export const FIELD_LIMITS = {
   projectName: 120,
   /** `Project.summary`. */
   summary: 255,
+  /** `Issue.title`. */
+  issueTitle: 255,
   /** `Project.icon` — a Material Symbols ligature name or one emoji. */
   icon: 40,
 } as const;

@@ -28,6 +28,13 @@ export interface IssueGroupData {
   rows: IssueListItemDto[];
   /** Left padding of this group's rows, in px. */
   indent: number;
+  /**
+   * What the group's quick-add files into: grouping by status means the new
+   * issue takes the group's state, grouping by epic means it takes the group's
+   * epic. "No epic" implies neither, and both `null` is the API's own default —
+   * first workflow state, no parent.
+   */
+  quickAdd: { stateId: string | null; epicId: string | null };
 }
 
 const EPIC_ACCENT = "var(--accent)";
@@ -87,6 +94,7 @@ function groupByStatus(issues: IssueListItemDto[], states: WorkflowStateDto[]): 
       progress: null,
       rows,
       indent: ROW_INDENT,
+      quickAdd: { stateId: state.id, epicId: null },
     });
   }
 
@@ -114,6 +122,7 @@ function groupByEpic(issues: IssueListItemDto[]): IssueGroupData[] {
         progress: epic.epicProgress ?? countCompleted(rows),
         rows,
         indent: CHILD_INDENT,
+        quickAdd: { stateId: null, epicId: epic.id },
       };
     });
 
@@ -133,6 +142,7 @@ function groupByEpic(issues: IssueListItemDto[]): IssueGroupData[] {
       progress: null,
       rows: loose,
       indent: ROW_INDENT,
+      quickAdd: { stateId: null, epicId: null },
     });
   }
 

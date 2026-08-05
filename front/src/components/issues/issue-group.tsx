@@ -23,12 +23,15 @@ export function IssueGroup({
   state,
   iconRadius,
   progress,
+  quickAdd,
   children,
 }: Pick<
   IssueGroupData,
   "kind" | "label" | "identifier" | "legacy" | "count" | "accent" | "state" | "iconRadius" | "progress"
 > & {
   children: React.ReactNode;
+  /** The group's own creator, hidden with the rows when the group collapses. */
+  quickAdd?: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const isEpic = kind === "epic";
@@ -72,7 +75,12 @@ export function IssueGroup({
         <span className="flex-1" />
         {isEpic && <span className="text-115 text-ink-8">epic</span>}
       </button>
-      {!collapsed && children}
+      {!collapsed && (
+        <>
+          {children}
+          {quickAdd}
+        </>
+      )}
     </section>
   );
 }

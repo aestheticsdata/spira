@@ -24,6 +24,8 @@ export function MarkdownEditor({
   busy = false,
   placeholder = "Markdown. Reference an issue by writing its identifier — SPI-24.",
   minRows = 12,
+  autoFocus = true,
+  showActions = true,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -32,19 +34,26 @@ export function MarkdownEditor({
   busy?: boolean;
   placeholder?: string;
   minRows?: number;
+  /** Off when the editor is one field among several and another owns the caret. */
+  autoFocus?: boolean;
+  /**
+   * Off when the editor sits inside a bigger form that draws its own buttons.
+   * The shortcuts stay live either way — `onSave` is then the form's submit.
+   */
+  showActions?: boolean;
 }) {
   const textarea = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const element = textarea.current;
-    if (!element) {
+    if (!element || !autoFocus) {
       return;
     }
     // Caret at the end, not the start: opening an editor on existing prose is
     // almost always an intent to add to it.
     element.focus();
     element.setSelectionRange(element.value.length, element.value.length);
-  }, []);
+  }, [autoFocus]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Escape") {
@@ -101,24 +110,28 @@ export function MarkdownEditor({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <Button
-          type="button"
-          variant="primary"
-          size="xs"
-          disabled={busy}
-          onClick={onSave}
-        >
-          {busy ? "Saving…" : "Save"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="xs"
-          disabled={busy}
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
+        {showActions && (
+          <>
+            <Button
+              type="button"
+              variant="primary"
+              size="xs"
+              disabled={busy}
+              onClick={onSave}
+            >
+              {busy ? "Saving…" : "Save"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="xs"
+              disabled={busy}
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </>
+        )}
 
         <div className="flex-1" />
         <span className="text-11 text-ink-8">⌘↵ saves · Esc cancels</span>

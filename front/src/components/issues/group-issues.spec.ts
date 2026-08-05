@@ -114,6 +114,15 @@ describe("groupIssues — status mode", () => {
     expect(group.state).toBe(TODO);
   });
 
+  it("points each group's quick-add at that group's state", () => {
+    const groups = groupIssues([makeIssue("1", TODO), makeIssue("2", DONE)], STATES, "status");
+
+    expect(groups.map((group) => group.quickAdd)).toEqual([
+      { stateId: TODO.id, epicId: null },
+      { stateId: DONE.id, epicId: null },
+    ]);
+  });
+
   it("does not mutate its inputs", () => {
     const issues = [makeIssue("1", DONE), makeIssue("2", PROGRESS)];
     const states = [...STATES];
@@ -208,6 +217,18 @@ describe("groupIssues — epic mode", () => {
       indent: 16,
     });
     expect(noEpic.rows.map((row) => row.id)).toEqual(["2", "3"]);
+  });
+
+  it("points an epic group's quick-add at the epic, and the trailing group's at nothing", () => {
+    const epic = makeIssue("e1", PROGRESS, { isEpic: true });
+    const groups = groupIssues([epic, makeIssue("1", TODO, { epicId: "e1" }), makeIssue("2", BACKLOG)], STATES, "epic");
+
+    expect(groups.map((group) => group.quickAdd)).toEqual([
+      { stateId: null, epicId: "e1" },
+      // Both null is not "unset" — it is the API's own default, which is what
+      // filing into "No epic" means.
+      { stateId: null, epicId: null },
+    ]);
   });
 
   it("omits the trailing group when every issue belongs to an epic", () => {

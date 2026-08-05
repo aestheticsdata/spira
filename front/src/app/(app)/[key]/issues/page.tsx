@@ -2,6 +2,7 @@ import { groupIssues } from "@components/issues/group-issues";
 import { IssueGroup } from "@components/issues/issue-group";
 import { IssueRow } from "@components/issues/issue-row";
 import { IssuesFilterBar, IssuesToolbar } from "@components/issues/issues-toolbar";
+import { QuickAddIssue } from "@components/issues/quick-add-issue";
 import { AppHeader } from "@components/shell/app-header";
 import { ProjectTabs } from "@components/shell/project-tabs";
 import { serverFetch, serverFetchOptional } from "@lib/server-api";
@@ -74,6 +75,15 @@ export default async function ProjectIssuesPage({
             state={group.state}
             iconRadius={group.iconRadius}
             progress={group.progress}
+            quickAdd={
+              <QuickAddIssue
+                projectKey={project.key}
+                stateId={group.quickAdd.stateId}
+                epicId={group.quickAdd.epicId}
+                target={group.label}
+                indent={group.indent}
+              />
+            }
           >
             {group.rows.map((issue) => (
               <IssueRow
@@ -87,11 +97,29 @@ export default async function ProjectIssuesPage({
           </IssueGroup>
         ))}
 
-        {groups.length === 0 && (
-          <p className="px-4 py-20 text-center text-125 text-ink-7">
-            {labelId ? `No issue in ${project.name} carries that label.` : `${project.name} has no issues yet.`}
-          </p>
-        )}
+        {/* An empty project has no groups, so it would have no quick-add
+            either — and no way in from the list at all. A filtered list that
+            came back empty gets no creator: an issue filed here would not carry
+            the label being filtered on, so it would vanish the moment it
+            appeared. */}
+        {groups.length === 0 &&
+          (labelId ? (
+            <p className="px-4 py-20 text-center text-125 text-ink-7">No issue in {project.name} carries that label.</p>
+          ) : (
+            <>
+              <p className="px-4 pt-20 pb-3 text-center text-125 text-ink-7">{project.name} has no issues yet.</p>
+              <div className="border-t border-line-soft">
+                <QuickAddIssue
+                  projectKey={project.key}
+                  stateId={null}
+                  epicId={null}
+                  target={project.name}
+                  indent={16}
+                  defaultOpen
+                />
+              </div>
+            </>
+          ))}
 
         <div className="h-[60px]" />
       </div>
