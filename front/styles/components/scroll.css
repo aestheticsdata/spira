@@ -1,0 +1,16 @@
+/* The design gives every scroll container a thin, unobtrusive thumb and no
+   track. Applied by class rather than globally so native scrollbars inside
+   third-party widgets are left alone. */
+.sp-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sp-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+.sp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}

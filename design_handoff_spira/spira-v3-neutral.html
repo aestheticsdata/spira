@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,400,1,0&display=swap" rel="stylesheet" />
+<link rel="icon" href="favicon.ico" sizes="any" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32" />
+<link rel="icon" href="assets/favicon-16.png" type="image/png" sizes="16x16" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" sizes="180x180" />
+<link rel="manifest" href="site.webmanifest" />
+<meta name="theme-color" content="#14161b" />
+<style>
+  html, body { margin: 0; padding: 0; background: #101012; }
+  * { box-sizing: border-box; }
+  a { color: #c3c9d4; text-decoration: none; }
+  a:hover { color: #dfe3ea; }
+  ::selection { background: #4a4e57; }
+  .sp-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .sp-scroll::-webkit-scrollbar-thumb { background: #4a4b52; border-radius: 4px; }
+  .sp-scroll::-webkit-scrollbar-track { background: transparent; }
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #101012; padding: 28px; display: flex; justify-content: center; min-width: max-content; font-family: 'IBM Plex Sans', system-ui, sans-serif;">
+<div data-app-frame="true" style="width: 1660px; flex: none; height: 1010px; border-radius: 10px; overflow: hidden; border: 1px solid #3d3e44; box-shadow: 0 30px 90px rgba(0,0,0,.6); display: flex; flex-direction: column; background: #26272a;">
+
+  <div style="height: 44px; flex: none; background: #1a1b1d; border-bottom: 1px solid #333438; display: flex; align-items: center; gap: 14px; padding: 0 14px;">
+    <div style="display: flex; gap: 7px;">
+      <div style="width: 11px; height: 11px; border-radius: 50%; background: #4d4e56;"></div>
+      <div style="width: 11px; height: 11px; border-radius: 50%; background: #4d4e56;"></div>
+      <div style="width: 11px; height: 11px; border-radius: 50%; background: #4d4e56;"></div>
+    </div>
+    <div style="display: flex; gap: 2px;">
+      <div onClick="{{ back }}" style="width: 24px; height: 24px; border-radius: 5px; display: grid; place-items: center; color: #a2a4aa; font-size: 13px; cursor: pointer;" style-hover="background: #1c1e22; color: #eff0f2;">←</div>
+      <div style="width: 24px; height: 24px; border-radius: 5px; display: grid; place-items: center; color: #6a6c73; font-size: 13px;">→</div>
+    </div>
+    <div style="flex: 1; max-width: 620px; height: 26px; border-radius: 6px; background: #1a1c20; border: 1px solid #3a3b40; display: flex; align-items: center; padding: 0 10px; gap: 8px;">
+      <div style="width: 5px; height: 5px; border-radius: 50%; background: #8fae97;"></div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #a8aab0; white-space: nowrap; overflow: hidden;">spira.1991.computer<span style="color: #eff0f2;">{{ url }}</span></div>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6a6c73; letter-spacing: .06em;">SELF-HOSTED · ks-b</div>
+  </div>
+
+  <div style="flex: 1; min-height: 0; display: flex;">
+
+    <div style="width: 236px; flex: none; background: #202124; border-right: 1px solid #333438; display: flex; flex-direction: column; padding: 10px 8px;">
+      <div style="display: flex; align-items: center; gap: 9px; padding: 5px 6px 12px;">
+        <img src="assets/spira-mark.svg" alt="Spira" style="width: 22px; height: 22px; display: block;" />
+        <div style="flex: 1;">
+          <div style="font-size: 13px; font-weight: 600; color: #eff0f2; letter-spacing: -.01em;">Spira</div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #8a8c92; border: 1px solid #3a3b40; border-radius: 4px; padding: 2px 4px;">1&#8202;user</div>
+      </div>
+
+      <div onClick="{{ openSearch }}" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; margin-bottom: 12px; border-radius: 6px; background: #1b1d21; border: 1px solid #3a3b40; cursor: pointer;" style-hover="border-color: #4a4b52;">
+        <div style="width: 9px; height: 9px; border: 1.5px solid #95979d; border-radius: 50%;"></div>
+        <div style="flex: 1; font-size: 12.5px; color: #a2a4aa;">Search issues</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; background: #33343a; border-radius: 3px; padding: 1px 4px;">/</div>
+      </div>
+
+      <div onClick="{{ goProjects }}" style="display: flex; align-items: center; gap: 9px; height: 29px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: {{ navProjectsColor }}; background: {{ navProjectsBg }};" style-hover="background: #2f3034;">
+        <div style="width: 12px; height: 12px; border: 1.5px solid currentColor; border-radius: 3px; opacity: .75;"></div>Projects
+      </div>
+      <div onClick="{{ goViews }}" style="display: flex; align-items: center; gap: 9px; height: 29px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: {{ navViewsColor }}; background: {{ navViewsBg }};" style-hover="background: #2f3034;">
+        <div style="width: 12px; height: 12px; border-top: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; opacity: .75;"></div>Saved views
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 8px 6px;">
+        <div style="font-size: 10.5px; font-weight: 600; letter-spacing: .07em; color: #8a8c92;">PROJECTS</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6a6c73;">key</div>
+      </div>
+
+      <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 1px;">
+        <sc-for list="{{ projects }}" as="p" hint-placeholder-count="7">
+          <div onClick="{{ p.open }}" style="display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 6px; cursor: pointer; background: {{ p.navBg }};" style-hover="background: #2f3034;">
+            <div style="width: 18px; height: 18px; flex: none; border-radius: 4px; display: grid; place-items: center; background: {{ p.tint }}; color: {{ p.color }};"><span style="font-family: 'Material Symbols Rounded'; font-size: 16px; line-height: 1;">{{ p.icon }}</span></div>
+            <div style="flex: 1; font-size: 13px; color: {{ p.navColor }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ p.name }}</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #8a8c92; letter-spacing: .04em;">{{ p.key }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="border-top: 1px solid #333438; padding-top: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 1px;">
+        <div onClick="{{ goImport }}" style="display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; color: {{ navImportColor }}; background: {{ navImportBg }};" style-hover="background: #2f3034;">Import from Linear</div>
+        <div onClick="{{ goSettings }}" style="display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; color: {{ navSettingsColor }}; background: {{ navSettingsBg }};" style-hover="background: #2f3034;">Settings</div>
+        <div onClick="{{ goSystem }}" style="display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; color: {{ navSystemColor }}; background: {{ navSystemBg }};" style-hover="background: #2f3034;">Design system</div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #26272a;">
+
+      <div style="height: 48px; flex: none; border-bottom: 1px solid #333438; display: flex; align-items: center; padding: 0 16px; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 7px; font-size: 13px; color: #a2a4aa;">
+          <span onClick="{{ goProjects }}" style="cursor: pointer;">Projects</span>
+          <sc-if value="{{ crumbProject }}" hint-placeholder-val="{{ true }}">
+            <span style="color: #6a6c73;">/</span>
+            <span onClick="{{ goOverview }}" style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 17px; height: 17px; border-radius: 4px; display: grid; place-items: center; background: {{ crumbTint }}; color: {{ crumbColor }};"><span style="font-family: 'Material Symbols Rounded'; font-size: 15px; line-height: 1;">{{ crumbIcon }}</span></span>
+              <span style="color: #eff0f2; font-weight: 500;">{{ crumbProject }}</span>
+            </span>
+          </sc-if>
+          <span style="color: #6a6c73;">/</span>
+          <span style="color: #eff0f2;">{{ crumbLeaf }}</span>
+        </div>
+        <div style="flex: 1;"></div>
+        <sc-if value="{{ isIssues }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div onClick="{{ toggleFilter }}" style="height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3a3b40; font-size: 12px; color: {{ filterColor }}; background: {{ filterBg }}; cursor: pointer; display: flex; align-items: center; gap: 6px;" style-hover="border-color: #4d4e56;">Filter</div>
+            <div onClick="{{ toggleGrouping }}" style="height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3a3b40; font-size: 12px; color: #c6c8cd; cursor: pointer; display: flex; align-items: center; gap: 6px;" style-hover="border-color: #4d4e56;">Group: <span style="color: #eff0f2; font-weight: 500;">{{ groupingLabel }}</span></div>
+            <div onClick="{{ toggleLegacy }}" style="height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3a3b40; font-size: 12px; color: #c6c8cd; cursor: pointer; display: flex; align-items: center; gap: 6px;" style-hover="border-color: #4d4e56;">Legacy IDs: <span style="color: #eff0f2; font-weight: 500;">{{ legacyLabel }}</span></div>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ isIssues }}" hint-placeholder-val="{{ true }}">
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+        <div style="height: 40px; flex: none; border-bottom: 1px solid #333438; display: flex; align-items: center; gap: 8px; padding: 0 16px;">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+            <div onClick="{{ t.go }}" style="height: 25px; padding: 0 11px; border-radius: 6px; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; color: {{ t.color }}; background: {{ t.bg }};" style-hover="background: #33343a;">{{ t.label }}</div>
+          </sc-for>
+          <div style="width: 1px; height: 18px; background: #3a3b40; margin: 0 4px;"></div>
+          <sc-for list="{{ savedViews }}" as="v" hint-placeholder-count="2">
+            <div onClick="{{ v.go }}" style="height: 25px; padding: 0 10px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: {{ v.color }}; background: {{ v.bg }}; border: 1px solid {{ v.border }};" style-hover="border-color: #4d4e56;">
+              <span style="width: 5px; height: 5px; border-radius: 1px; background: {{ v.dot }};"></span>{{ v.label }}
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ filterOn }}" hint-placeholder-val="{{ false }}">
+          <div style="flex: none; border-bottom: 1px solid #333438; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; height: 24px; border: 1px solid #3a3b40; border-radius: 6px; overflow: hidden; font-size: 11.5px;">
+              <span style="padding: 0 8px; color: #b0b2b8; height: 100%; display: flex; align-items: center;">Labels</span>
+              <span style="padding: 0 8px; color: #a2a4aa; height: 100%; display: flex; align-items: center; border-left: 1px solid #3a3b40;">include</span>
+              <span style="padding: 0 8px; color: #eff0f2; height: 100%; display: flex; align-items: center; gap: 5px; border-left: 1px solid #3a3b40; background: #2f3034;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #9db1c4;"></span>Feature</span>
+              <span onClick="{{ toggleFilter }}" style="padding: 0 7px; color: #95979d; height: 100%; display: flex; align-items: center; border-left: 1px solid #3a3b40; cursor: pointer;">×</span>
+            </div>
+            <div style="flex: 1;"></div>
+            <div onClick="{{ toggleFilter }}" style="font-size: 11.5px; color: #a2a4aa; cursor: pointer; padding: 0 6px;">Clear</div>
+            <div style="font-size: 11.5px; color: #c3c9d4; cursor: pointer; padding: 0 6px;">Save view</div>
+          </div>
+        </sc-if>
+
+        <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="border-left: 2px solid {{ g.accent }};">
+              <div onClick="{{ g.toggle }}" style="height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 14px; background: {{ g.headerBg }}; cursor: pointer; border-bottom: 1px solid #2f3034;">
+                <div style="width: 12px; height: 12px; flex: none; border-radius: {{ g.iconRadius }}; border: 1.5px {{ g.iconStyle }} {{ g.color }}; background: {{ g.iconBg }}; display: grid; place-items: center;">
+                  <div style="width: {{ g.dot }}; height: {{ g.dot }}; border-radius: 1px; background: {{ g.color }};"></div>
+                </div>
+                <sc-if value="{{ g.identifier }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: baseline; gap: 6px;">
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: #dcdee1;">{{ g.identifier }}</span>
+                    <sc-if value="{{ g.legacy }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #a2a4aa; border: 1px dashed #484950; border-radius: 3px; padding: 0 3px;">{{ g.legacy }}</span>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <div style="font-size: 13px; font-weight: 600; color: #eff0f2; letter-spacing: -.01em;">{{ g.label }}</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #95979d;">{{ g.count }}</div>
+                <sc-if value="{{ g.progressText }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: center; gap: 7px; margin-left: 2px; padding: 2px 8px 2px 5px; border-radius: 20px; background: #31333a; border: 1px solid #474a52;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(#c3c9d4 {{ g.progressDeg }}, #484950 0);"></div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #c6c8cd;">{{ g.progressText }}</div>
+                  </div>
+                </sc-if>
+                <div style="flex: 1;"></div>
+                <div style="font-size: 11.5px; color: #8a8c92;">{{ g.hint }}</div>
+              </div>
+
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="6">
+                <div onClick="{{ r.open }}" style="display: flex; align-items: center; gap: 10px; height: {{ r.h }}; padding: 0 16px 0 {{ r.indent }}; border-bottom: 1px solid #2f3034; cursor: pointer; background: {{ r.bg }}; box-shadow: inset {{ r.accentW }} 0 0 {{ r.accent }};" style-hover="background: #323338;">
+                  <div style="width: 12px; height: 12px; flex: none; border-radius: {{ r.iconRadius }}; border: 1.5px {{ r.iconStyle }} {{ r.color }}; background: {{ r.iconBg }}; display: grid; place-items: center;">
+                    <div style="width: {{ r.dot }}; height: {{ r.dot }}; border-radius: 1px; background: {{ r.color }};"></div>
+                  </div>
+                  <div style="display: flex; align-items: baseline; gap: 6px; width: 138px; flex: none;">
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 500; color: {{ r.idColor }}; letter-spacing: .01em;">{{ r.id }}</span>
+                    <sc-if value="{{ r.legacy }}" hint-placeholder-val="{{ true }}">
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #9a9ca2; border: 1px dashed #484950; border-radius: 3px; padding: 0 3px; line-height: 14px;">{{ r.legacy }}</span>
+                    </sc-if>
+                  </div>
+                  <sc-if value="{{ r.isEpic }}" hint-placeholder-val="{{ false }}">
+                    <div style="width: 13px; height: 13px; flex: none; border-radius: 3px; border: 1.5px solid #c3c9d4; display: grid; place-items: center;">
+                      <div style="width: 5px; height: 1.5px; background: #c3c9d4;"></div>
+                    </div>
+                  </sc-if>
+                  <div style="flex: 1; min-width: 0; font-size: 13px; font-weight: {{ r.titleWeight }}; color: {{ r.titleColor }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.005em;">{{ r.title }}</div>
+                  <sc-if value="{{ r.progressText }}" hint-placeholder-val="{{ false }}">
+                    <div style="flex: none; display: flex; align-items: center; gap: 7px; padding: 2px 8px 2px 5px; border-radius: 20px; background: #31333a; border: 1px solid #474a52;">
+                      <div style="width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(#c3c9d4 {{ r.progressDeg }}, #484950 0);"></div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #c6c8cd;">{{ r.progressText }}</div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.parentChip }}" hint-placeholder-val="{{ false }}">
+                    <div style="flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 5px; max-width: 190px; padding: 1px 7px 1px 5px; border-radius: 4px; background: #2f3137; border: 1px solid #474a52;">
+                      <div style="width: 9px; height: 9px; flex: none; border-radius: 2px; border: 1.5px solid #8a8d97;"></div>
+                      <div style="font-size: 11px; color: #b0b2b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.parentChip }}</div>
+                    </div>
+                  </sc-if>
+                  <sc-for list="{{ r.labels }}" as="l" hint-placeholder-count="0">
+                    <div style="flex: none; display: flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 20px; border: 1px solid #3a3b40;">
+                      <span style="width: 6px; height: 6px; border-radius: 50%; background: {{ l.color }};"></span>
+                      <span style="font-size: 11px; color: #c6c8cd;">{{ l.name }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="flex: none; display: flex; align-items: flex-end; gap: 1.5px; height: 10px; width: 12px;">
+                    <div style="width: 3px; height: 4px; border-radius: 1px; background: #a6a8ae; opacity: {{ r.p1 }};"></div>
+                    <div style="width: 3px; height: 7px; border-radius: 1px; background: #a6a8ae; opacity: {{ r.p2 }};"></div>
+                    <div style="width: 3px; height: 10px; border-radius: 1px; background: #a6a8ae; opacity: {{ r.p3 }};"></div>
+                  </div>
+                  <div style="flex: none; width: 44px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #95979d;">{{ r.date }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="height: 60px;"></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+        <div style="height: 40px; flex: none; border-bottom: 1px solid #333438; display: flex; align-items: center; gap: 8px; padding: 0 16px;">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+            <div onClick="{{ t.go }}" style="height: 25px; padding: 0 11px; border-radius: 6px; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; color: {{ t.color }}; background: {{ t.bg }};" style-hover="background: #33343a;">{{ t.label }}</div>
+          </sc-for>
+        </div>
+        <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 44px 0 80px;">
+          <div style="max-width: 720px; margin: 0 auto; padding: 0 24px;">
+            <div onClick="{{ ovPick }}" style="width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; background: {{ ovTint }}; color: {{ ovColor }}; margin-bottom: 18px; cursor: pointer; box-shadow: 0 0 0 1px transparent;" style-hover="box-shadow: 0 0 0 1px #565a63;"><span style="font-family: 'Material Symbols Rounded'; font-size: 28px; line-height: 1;">{{ ovIcon }}</span></div>
+            <div style="display: flex; align-items: baseline; gap: 12px;">
+              <h1 style="margin: 0; font-size: 27px; font-weight: 600; color: #fafbfc; letter-spacing: -.02em;">{{ ovName }}</h1>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #a2a4aa; border: 1px solid #3a3b40; border-radius: 5px; padding: 2px 6px;">{{ ovKey }}-</div>
+            </div>
+            <p style="margin: 12px 0 0; font-size: 15px; line-height: 1.55; color: #c6c8cd; text-wrap: pretty;">{{ ovSummary }}</p>
+
+            <div style="display: grid; grid-template-columns: 96px 1fr; gap: 14px 20px; margin-top: 30px; padding: 18px 0; border-top: 1px solid #333438; border-bottom: 1px solid #333438; align-items: center;">
+              <div style="font-size: 12.5px; color: #95979d;">Status</div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #dcdee1;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed #a6a8ae;"></div>Backlog
+              </div>
+              <div style="font-size: 12.5px; color: #95979d;">Issue key</div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #dcdee1;">
+                <span style="font-family: 'IBM Plex Mono', monospace; color: #eff0f2;">{{ ovKey }}-1</span>
+                <span style="font-size: 12px; color: #95979d;">· unique, editable, drives every identifier in this project</span>
+              </div>
+              <div style="font-size: 12.5px; color: #95979d;">Issues</div>
+              <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #dcdee1;">
+                <span>{{ ovCount }} issues</span>
+                <span style="width: 90px; height: 4px; border-radius: 2px; background: #3a3b40; overflow: hidden;"><span style="display: block; height: 100%; width: {{ ovProgress }}; background: #9aa3b2;"></span></span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #a8aab0;">{{ ovProgress }}</span>
+              </div>
+              <div style="font-size: 12.5px; color: #95979d;">Migrated</div>
+              <div style="font-size: 13px; color: #dcdee1;">{{ ovLegacyNote }}</div>
+            </div>
+
+            <div style="margin-top: 34px;">
+              <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 18px;">DESCRIPTION</div>
+              <sc-for list="{{ ovBlocks }}" as="b" hint-placeholder-count="6">
+                <div style="font-size: {{ b.size }}; font-weight: {{ b.weight }}; color: {{ b.color }}; line-height: {{ b.lh }}; margin: {{ b.margin }}; padding-left: {{ b.pad }}; font-family: {{ b.family }}; text-wrap: pretty; white-space: pre-wrap;">{{ b.text }}</div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isProjects }}" hint-placeholder-val="{{ false }}">
+      <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
+        <div style="display: flex; align-items: center; height: 32px; padding: 0 16px; border-bottom: 1px solid #333438; font-size: 11px; font-weight: 600; letter-spacing: .06em; color: #8a8c92;">
+          <div style="flex: 1; min-width: 220px;">NAME</div>
+          <div style="width: 92px; flex: none;">KEY</div>
+          <div style="width: 200px; flex: none;">SUMMARY</div>
+          <div style="width: 86px; text-align: right;">ISSUES</div>
+          <div style="width: 150px; text-align: right;">PROGRESS</div>
+          <div style="width: 110px; text-align: right;">STATUS</div>
+        </div>
+        <sc-for list="{{ projectRows }}" as="p" hint-placeholder-count="8">
+          <div onClick="{{ p.open }}" style="display: flex; align-items: center; height: 52px; padding: 0 16px; border-bottom: 1px solid #2f3034; cursor: pointer;" style-hover="background: #323338;">
+            <div style="flex: 1; min-width: 220px; display: flex; align-items: center; gap: 11px;">
+              <div onClick="{{ p.pick }}" style="width: 24px; height: 24px; flex: none; border-radius: 6px; display: grid; place-items: center; background: {{ p.tint }}; color: {{ p.color }}; box-shadow: 0 0 0 1px transparent;" style-hover="box-shadow: 0 0 0 1px #565a63;"><span style="font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1;">{{ p.icon }}</span></div>
+              <div style="font-size: 13.5px; font-weight: 500; color: #eff0f2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ p.name }}</div>
+            </div>
+            <div style="width: 92px; flex: none;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .05em; color: {{ p.color }}; background: {{ p.tint }}; border-radius: 4px; padding: 2px 6px;">{{ p.key }}</span>
+            </div>
+            <div style="width: 200px; flex: none; font-size: 12px; color: #a2a4aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px;">{{ p.summary }}</div>
+            <div style="width: 86px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #c6c8cd;">{{ p.count }}</div>
+            <div style="width: 150px; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+              <span style="width: 70px; height: 4px; border-radius: 2px; background: #3a3b40; overflow: hidden;"><span style="display: block; height: 100%; width: {{ p.progress }}; background: #9aa3b2;"></span></span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #a8aab0; width: 34px; text-align: right;">{{ p.progress }}</span>
+            </div>
+            <div style="width: 110px; display: flex; align-items: center; justify-content: flex-end; gap: 7px; font-size: 12.5px; color: #b0b2b8;">
+              <span style="width: 11px; height: 11px; border-radius: 50%; border: 1.5px dashed #a6a8ae;"></span>Backlog
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isIssue }}" hint-placeholder-val="{{ false }}">
+      <div style="flex: 1; min-height: 0; display: flex;">
+        <div class="sp-scroll" style="flex: 1; min-width: 0; overflow-y: auto; padding: 40px 0 90px; border-right: 1px solid #333438;">
+          <div style="max-width: 700px; margin: 0 auto; padding: 0 30px;">
+            <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 18px;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 500; color: #eff0f2; letter-spacing: .02em;">{{ dId }}</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #a2a4aa; border: 1px dashed #484950; border-radius: 4px; padding: 1px 5px;">{{ dLegacy }}</span>
+              <span style="font-size: 11.5px; color: #8a8c92;">{{ dLegacyNote }}</span>
+            </div>
+            <h1 style="margin: 0; font-size: 25px; line-height: 1.25; font-weight: 600; color: #fafbfc; letter-spacing: -.02em; text-wrap: pretty;">{{ dTitle }}</h1>
+            <sc-if value="{{ dEpicTitle }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ dOpenEpic }}" style="display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; padding: 5px 11px 5px 8px; border-radius: 7px; background: #2f3137; border: 1px solid #474a52; cursor: pointer;" style-hover="border-color: #565a63;">
+                <span style="width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid #c3c9d4; display: grid; place-items: center;"><span style="width: 5px; height: 1.5px; background: #c3c9d4; display: block;"></span></span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #c3c9d4;">{{ dEpicId }}</span>
+                <span style="font-size: 12.5px; color: #c6c8cd;">{{ dEpicTitle }}</span>
+              </div>
+            </sc-if>
+            <div style="margin-top: 30px;">
+              <sc-for list="{{ dBlocks }}" as="b" hint-placeholder-count="6">
+                <div style="font-size: {{ b.size }}; font-weight: {{ b.weight }}; color: {{ b.color }}; line-height: {{ b.lh }}; margin: {{ b.margin }}; padding-left: {{ b.pad }}; font-family: {{ b.family }}; text-wrap: pretty; white-space: pre-wrap;">{{ b.text }}</div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div class="sp-scroll" style="width: 300px; flex: none; overflow-y: auto; padding: 24px 20px;">
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 14px;">PROPERTIES</div>
+          <sc-for list="{{ dProps }}" as="p" hint-placeholder-count="5">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 7px 0;">
+              <div style="width: 74px; flex: none; font-size: 12px; color: #95979d;">{{ p.label }}</div>
+              <div style="flex: 1; display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #dcdee1;">
+                <span style="width: 11px; height: 11px; flex: none; border-radius: {{ p.radius }}; border: 1.5px {{ p.iconStyle }} {{ p.color }}; background: {{ p.iconBg }};"></span>{{ p.value }}
+              </div>
+            </div>
+          </sc-for>
+          <div style="height: 1px; background: #333438; margin: 16px 0;"></div>
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 12px;">RELATIONS</div>
+          <sc-for list="{{ dRelations }}" as="r" hint-placeholder-count="2">
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 11px; color: #95979d; margin-bottom: 6px;">{{ r.kind }}</div>
+              <div onClick="{{ r.open }}" style="display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; background: #2c2d31; border: 1px solid #3a3b40; cursor: pointer;" style-hover="border-color: #4d4e56;">
+                <span style="width: 11px; height: 11px; flex: none; border-radius: 50%; border: 1.5px dashed #a6a8ae;"></span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #b0b2b8;">{{ r.id }}</span>
+                <span style="font-size: 12px; color: #dcdee1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.title }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <div style="height: 1px; background: #333438; margin: 16px 0;"></div>
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 10px;">LEGACY</div>
+          <div style="padding: 10px 11px; border-radius: 7px; background: #2a2b2f; border: 1px dashed #484950;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #c6c8cd;">{{ dLegacy }}</div>
+            <div style="font-size: 11.5px; color: #95979d; line-height: 1.5; margin-top: 5px;">Indexed and searchable. <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;">/issue/{{ dLegacy }}</span> redirects here.</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isImport }}" hint-placeholder-val="{{ false }}">
+      <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 40px 0 80px;">
+        <div style="max-width: 800px; margin: 0 auto; padding: 0 24px;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 600; color: #fafbfc; letter-spacing: -.02em;">Import from Linear</h1>
+          <p style="margin: 10px 0 0; font-size: 13.5px; line-height: 1.6; color: #b0b2b8; max-width: 620px; text-wrap: pretty;">One CSV per workspace export. Issues are renumbered under their project key; the original identifier is stored in <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #c6c8cd;">legacyIdentifier</span> and stays resolvable.</p>
+
+          <div style="margin-top: 24px; padding: 14px 16px; border-radius: 9px; background: #302c28; border: 1px solid #544539; display: flex; gap: 12px;">
+            <div style="width: 16px; height: 16px; flex: none; border-radius: 4px; border: 1.5px solid #c9a05a; margin-top: 1px;"></div>
+            <div>
+              <div style="font-size: 13px; font-weight: 500; color: #d8c7a8;">The CSV has no comments and no relations</div>
+              <div style="font-size: 12.5px; color: #b3a894; line-height: 1.55; margin-top: 4px;">Take the raw GraphQL export first — it is the only copy of the comment threads and the blocking graph. Both vanish with the workspace.</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 22px; padding: 16px; border-radius: 9px; background: #2c2d31; border: 1px solid #3a3b40;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 30px; height: 30px; border-radius: 6px; background: #23262c; display: grid; place-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #a8aab0;">CSV</div>
+              <div style="flex: 1;">
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #eff0f2;">cosmokaat-export-2026-07-29.csv</div>
+                <div style="font-size: 11.5px; color: #95979d; margin-top: 3px;">286 rows · 9 projects · 6 statuses · 12 labels detected</div>
+              </div>
+              <div style="height: 28px; padding: 0 12px; border-radius: 6px; background: #464a52; border: 1px solid #5f636d; color: #f2f4f7; font-size: 12.5px; display: flex; align-items: center; cursor: pointer;" style-hover="background: #3a4c8f;">Run import</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92;">RENUMBERING PREVIEW</div>
+          <div style="margin-top: 12px; border: 1px solid #3a3b40; border-radius: 9px; overflow: hidden;">
+            <div style="display: flex; height: 30px; align-items: center; padding: 0 14px; background: #2c2d31; border-bottom: 1px solid #3a3b40; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; color: #8a8c92;">
+              <div style="width: 96px;">LINEAR</div>
+              <div style="width: 30px;"></div>
+              <div style="width: 96px;">SPIRA</div>
+              <div style="width: 96px;">PROJECT</div>
+              <div style="flex: 1;">TITLE</div>
+            </div>
+            <sc-for list="{{ importRows }}" as="i" hint-placeholder-count="6">
+              <div style="display: flex; height: 34px; align-items: center; padding: 0 14px; border-bottom: 1px solid #2f3034;">
+                <div style="width: 96px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9a9ca2;">{{ i.legacy }}</div>
+                <div style="width: 30px; color: #6a6c73; font-size: 12px;">→</div>
+                <div style="width: 96px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: #eff0f2;">{{ i.id }}</div>
+                <div style="width: 96px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: {{ i.color }}; background: {{ i.tint }}; border-radius: 4px; padding: 2px 5px;">{{ i.key }}</span></div>
+                <div style="flex: 1; min-width: 0; font-size: 12.5px; color: #c6c8cd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ i.title }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top: 12px; font-size: 12px; color: #95979d;">Numbering restarts at 1 per project, ordered by creation date. 286 legacy identifiers will keep resolving.</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 40px 0 80px;">
+        <div style="max-width: 720px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 30px;">
+          <div>
+            <h1 style="margin: 0; font-size: 22px; font-weight: 600; color: #fafbfc; letter-spacing: -.02em;">Settings</h1>
+            <p style="margin: 9px 0 0; font-size: 13.5px; color: #b0b2b8;">One account, no invites, no roles. Everything below is yours alone.</p>
+          </div>
+
+          <div style="border: 1px solid #3a3b40; border-radius: 10px; overflow: hidden;">
+            <div style="padding: 13px 16px; background: #2c2d31; border-bottom: 1px solid #3a3b40; font-size: 12.5px; font-weight: 600; color: #dcdee1;">Account</div>
+            <div style="padding: 16px; display: flex; align-items: center; gap: 12px;">
+              <div style="width: 30px; height: 30px; border-radius: 50%; background: #464a52; display: grid; place-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #f2f4f7;">CO</div>
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: #eff0f2;">cosmokaat</div>
+                <div style="font-size: 11.5px; color: #95979d; margin-top: 2px;">Seeded account · signup disabled · bcryptjs · session in Redis</div>
+              </div>
+              <div style="height: 27px; padding: 0 11px; border-radius: 6px; border: 1px solid #3a3b40; font-size: 12px; color: #c6c8cd; display: flex; align-items: center; cursor: pointer;" style-hover="border-color: #4d4e56;">Change password</div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #3a3b40; border-radius: 10px; overflow: hidden;">
+            <div style="padding: 13px 16px; background: #2c2d31; border-bottom: 1px solid #3a3b40; display: flex; align-items: center; gap: 10px;">
+              <div style="font-size: 12.5px; font-weight: 600; color: #dcdee1;">MCP connector</div>
+              <div style="display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 20px; background: #2c332e; border: 1px solid #46524a;">
+                <span style="width: 5px; height: 5px; border-radius: 50%; background: #8fae97;"></span>
+                <span style="font-size: 10.5px; color: #9fb3a6;">Connected</span>
+              </div>
+              <div style="flex: 1;"></div>
+              <div style="font-size: 11.5px; color: #95979d;">Last call 3 min ago · Claude Code</div>
+            </div>
+            <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <div style="font-size: 11.5px; color: #95979d; margin-bottom: 6px;">Endpoint</div>
+                <div style="height: 32px; border-radius: 7px; background: #212226; border: 1px solid #3a3b40; display: flex; align-items: center; padding: 0 10px; gap: 10px;">
+                  <div style="flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #c6c8cd;">https://spira.1991.computer/api/mcp</div>
+                  <div style="font-size: 11px; color: #c3c9d4; cursor: pointer;">Copy</div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size: 11.5px; color: #95979d; margin-bottom: 6px;">API token</div>
+                <div style="height: 32px; border-radius: 7px; background: #212226; border: 1px solid #3a3b40; display: flex; align-items: center; padding: 0 10px; gap: 10px;">
+                  <div style="flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #9a9ca2;">spira_pat_••••••••••••••••••••8f2c</div>
+                  <div style="font-size: 11px; color: #c3c9d4; cursor: pointer;">Rotate</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px;">
+                <sc-for list="{{ mcpTools }}" as="t" hint-placeholder-count="6">
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #b0b2b8; background: #2c2d31; border: 1px solid #3a3b40; border-radius: 5px; padding: 3px 7px;">{{ t }}</div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #3a3b40; border-radius: 10px; overflow: hidden;">
+            <div style="padding: 13px 16px; background: #2c2d31; border-bottom: 1px solid #3a3b40; display: flex; align-items: center;">
+              <div style="flex: 1; font-size: 12.5px; font-weight: 600; color: #dcdee1;">Labels</div>
+              <div style="font-size: 11.5px; color: #c3c9d4; cursor: pointer;">New label</div>
+            </div>
+            <sc-for list="{{ labelRows }}" as="l" hint-placeholder-count="5">
+              <div style="display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid #2f3034;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ l.color }};"></span>
+                <span style="flex: 1; font-size: 12.5px; color: #dcdee1;">{{ l.name }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #95979d;">{{ l.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isSystem }}" hint-placeholder-val="{{ false }}">
+      <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 38px 0 90px;">
+        <div style="max-width: 940px; margin: 0 auto; padding: 0 28px; display: flex; flex-direction: column; gap: 40px;">
+          <div>
+            <h1 style="margin: 0; font-size: 22px; font-weight: 600; color: #fafbfc; letter-spacing: -.02em;">Design system</h1>
+            <p style="margin: 9px 0 0; font-size: 13.5px; color: #b0b2b8;">Dark only. Tailwind v4 tokens, shadcn primitives, lucide icons. IBM Plex Sans for the interface, IBM Plex Mono for every identifier.</p>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 14px;">SURFACES</div>
+            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;">
+              <sc-for list="{{ swatches }}" as="s" hint-placeholder-count="6">
+                <div>
+                  <div style="height: 54px; border-radius: 8px; border: 1px solid #3a3b40; background: {{ s.hex }};"></div>
+                  <div style="font-size: 11.5px; color: #c6c8cd; margin-top: 7px;">{{ s.name }}</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #95979d; margin-top: 2px;">{{ s.hex }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 14px;">STATUS</div>
+            <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+              <sc-for list="{{ statusSwatches }}" as="s" hint-placeholder-count="6">
+                <div style="display: flex; align-items: center; gap: 9px;">
+                  <div style="width: 13px; height: 13px; border-radius: {{ s.iconRadius }}; border: 1.5px {{ s.iconStyle }} {{ s.color }}; background: {{ s.iconBg }}; display: grid; place-items: center;">
+                    <div style="width: {{ s.dot }}; height: {{ s.dot }}; border-radius: 1px; background: {{ s.color }};"></div>
+                  </div>
+                  <div style="font-size: 12.5px; color: #dcdee1;">{{ s.name }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 6px;">IDENTIFIER PAIR</div>
+            <div style="font-size: 12.5px; color: #a2a4aa; margin-bottom: 16px; max-width: 620px;">The Spira identifier reads first: brighter, medium weight, tighter tracking. The legacy identifier sits in a dashed capsule — same family, smaller, dimmer, never mistaken for the live one.</div>
+            <div style="display: flex; gap: 34px; align-items: flex-end; padding: 20px; border: 1px solid #3a3b40; border-radius: 10px; background: #2c2d31;">
+              <div>
+                <div style="display: flex; align-items: baseline; gap: 6px;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; color: #eff0f2;">PFA-41</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #9a9ca2; border: 1px dashed #484950; border-radius: 3px; padding: 0 4px;">COS-177</span>
+                </div>
+                <div style="font-size: 11px; color: #95979d; margin-top: 8px;">list row · always visible</div>
+              </div>
+              <div>
+                <div style="display: flex; align-items: baseline; gap: 7px;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 500; color: #fafbfc;">SPI-24</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #a2a4aa; border: 1px dashed #484950; border-radius: 4px; padding: 1px 5px;">COS-284</span>
+                </div>
+                <div style="font-size: 11px; color: #95979d; margin-top: 8px;">detail header</div>
+              </div>
+              <div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 5px; background: #31333a; border: 1px solid #474a52;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #c3c9d4;">SPI-24</span>
+                  <span style="font-size: 12px; color: #c6c8cd;">Renumbering and redirects</span>
+                </div>
+                <div style="font-size: 11px; color: #95979d; margin-top: 8px;">cross-reference chip in markdown</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 6px;">EPIC TREATMENTS</div>
+            <div style="font-size: 12.5px; color: #a2a4aa; margin-bottom: 16px; max-width: 640px;">Linear leaves an epic looking like any other row. Three ways to break that — <span style="color: #c6c8cd;">B is shipped</span>, A stays for flat search results, C is the grouping mode.</div>
+            <div style="border: 1px solid #3a3b40; border-radius: 10px; overflow: hidden;">
+              <div style="padding: 9px 14px; background: #2c2d31; border-bottom: 1px solid #3a3b40; font-size: 11.5px; color: #a8aab0;">A — parent chip on the child row (Linear's answer, kept for search)</div>
+              <div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px; border-bottom: 1px solid #2f3034;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed #a6a8ae;"></span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #b0b2b8; width: 130px;">SPI-24 <span style="font-size: 9.5px; color: #9a9ca2; border: 1px dashed #484950; border-radius: 3px; padding: 0 3px;">COS-284</span></span>
+                <span style="flex: 1; font-size: 13px; color: #eff0f2;">M3 — Renumbering, legacy identifiers and redirects</span>
+                <span style="display: flex; align-items: center; gap: 5px; padding: 1px 7px 1px 5px; border-radius: 4px; background: #2f3137; border: 1px solid #474a52; font-size: 11px; color: #b0b2b8;"><span style="width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid #8a8d97;"></span>Spira epic</span>
+              </div>
+              <div style="padding: 9px 14px; background: #2c2d31; border-bottom: 1px solid #3a3b40; border-top: 1px solid #3a3b40; font-size: 11.5px; color: #a8aab0;">B — epic row: accent rail, container glyph, progress ring, heavier title</div>
+              <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-bottom: 1px solid #2f3034; background: #2f3137; box-shadow: inset 2px 0 0 #9aa3b2;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed #a6a8ae;"></span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 500; color: #eff0f2; width: 130px;">SPI-1 <span style="font-size: 9.5px; color: #9a9ca2; border: 1px dashed #484950; border-radius: 3px; padding: 0 3px;">COS-251</span></span>
+                <span style="width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid #c3c9d4; display: grid; place-items: center;"><span style="width: 5px; height: 1.5px; background: #c3c9d4; display: block;"></span></span>
+                <span style="flex: 1; font-size: 13px; font-weight: 600; color: #fafbfc;">Spira — self-hosted Linear replacement</span>
+                <span style="display: flex; align-items: center; gap: 7px; padding: 2px 8px 2px 5px; border-radius: 20px; background: #31333a; border: 1px solid #474a52;"><span style="width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(#c3c9d4 28deg, #484950 0);"></span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #c6c8cd;">3/39</span></span>
+              </div>
+              <div style="padding: 9px 14px; background: #2c2d31; border-bottom: 1px solid #3a3b40; border-top: 1px solid #3a3b40; font-size: 11.5px; color: #a8aab0;">C — epic as the group header, children indented under it</div>
+              <div style="border-left: 2px solid #9aa3b2;">
+                <div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px 0 12px; background: #2f3137;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #dcdee1;">SPI-1</span>
+                  <span style="font-size: 13px; font-weight: 600; color: #fafbfc;">Spira — self-hosted Linear replacement</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #95979d;">39</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 14px 0 38px;">
+                  <span style="width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed #a6a8ae;"></span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #b0b2b8;">SPI-2</span>
+                  <span style="font-size: 13px; color: #eff0f2;">M1 — Full CSV export of the Linear workspace</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 14px;">TYPE SCALE</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: baseline; gap: 18px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; width: 120px;">25 / 600 / -.02em</span><span style="font-size: 25px; font-weight: 600; color: #fafbfc; letter-spacing: -.02em;">Issue title</span></div>
+              <div style="display: flex; align-items: baseline; gap: 18px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; width: 120px;">15 / 400</span><span style="font-size: 15px; color: #c6c8cd;">Body copy in descriptions</span></div>
+              <div style="display: flex; align-items: baseline; gap: 18px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; width: 120px;">13 / 400—600</span><span style="font-size: 13px; color: #eff0f2;">List row title</span></div>
+              <div style="display: flex; align-items: baseline; gap: 18px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; width: 120px;">11.5 mono / 500</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 500; color: #eff0f2;">SPI-24</span></div>
+              <div style="display: flex; align-items: baseline; gap: 18px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; width: 120px;">11 / 600 / .07em</span><span style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92;">SECTION LABEL</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: .07em; color: #8a8c92; margin-bottom: 14px;">CONTROLS</div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div style="height: 30px; padding: 0 13px; border-radius: 7px; background: #464a52; border: 1px solid #5f636d; color: #f2f4f7; font-size: 12.5px; display: flex; align-items: center;">Primary</div>
+              <div style="height: 30px; padding: 0 13px; border-radius: 7px; background: #2c2d31; border: 1px solid #3a3b40; color: #dcdee1; font-size: 12.5px; display: flex; align-items: center;">Secondary</div>
+              <div style="height: 30px; padding: 0 13px; border-radius: 7px; color: #b0b2b8; font-size: 12.5px; display: flex; align-items: center;">Ghost</div>
+              <div style="height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3a3b40; color: #c6c8cd; font-size: 12px; display: flex; align-items: center; gap: 6px;">Group: <span style="color: #eff0f2; font-weight: 500;">Status</span></div>
+              <div style="height: 24px; display: flex; align-items: center; border: 1px solid #3a3b40; border-radius: 6px; overflow: hidden; font-size: 11.5px;"><span style="padding: 0 8px; color: #b0b2b8;">Labels</span><span style="padding: 0 8px; color: #a2a4aa; border-left: 1px solid #3a3b40;">include</span><span style="padding: 0 8px; color: #eff0f2; border-left: 1px solid #3a3b40; background: #2f3034; display: flex; align-items: center; gap: 5px; height: 100%;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #9db1c4;"></span>Feature</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+<sc-if value="{{ pickerOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closePicker }}" style="position: fixed; inset: 0; z-index: 60;">
+    <div onClick="{{ stop }}" style="position: absolute; left: {{ pickerX }}; top: {{ pickerY }}; width: 414px; border-radius: 10px; background: #2a2b2f; border: 1px solid #42434a; box-shadow: 0 22px 60px rgba(0,0,0,.55); overflow: hidden; font-family: 'IBM Plex Sans', sans-serif;">
+      <div style="display: flex; gap: 4px; padding: 0 14px; border-bottom: 1px solid #3a3b40;">
+        <div onClick="{{ tabIcons }}" style="padding: 11px 6px 9px; font-size: 13px; color: {{ tabIconsColor }}; border-bottom: 2px solid {{ tabIconsLine }}; cursor: pointer;">Icons</div>
+        <div onClick="{{ tabEmojis }}" style="padding: 11px 6px 9px; margin-left: 14px; font-size: 13px; color: {{ tabEmojisColor }}; border-bottom: 2px solid {{ tabEmojisLine }}; cursor: pointer;">Emojis</div>
+      </div>
+      <sc-if value="{{ isIconsTab }}" hint-placeholder-val="{{ true }}">
+        <div style="padding: 13px 14px; border-bottom: 1px solid #3a3b40;">
+          <div style="display: flex; align-items: center; gap: 11px;">
+            <div style="width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: {{ pickerHex }};"><span style="font-family: 'Material Symbols Rounded'; font-size: 14px; line-height: 1; color: #17181b;">check</span></div>
+            <div style="font-size: 12.5px; color: #b0b2b8;">HEX <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #eff0f2;">{{ pickerHex }}</span></div>
+            <div style="flex: 1; font-size: 12.5px; color: #8a8c92;">{{ contrastNote }}</div>
+            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid #4d4e56; background: conic-gradient(#e06c6c, #d8c77a, #86c48f, #7fc6c6, #8f9fd8, #c08fd0, #e06c6c);"></div>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 12px;">
+            <div onClick="{{ onFieldClick }}" style="position: relative; flex: 1; height: 96px; border-radius: 5px; cursor: crosshair; background-image: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, {{ hueHex }});">
+              <div style="position: absolute; left: {{ knobLeft }}; top: {{ knobTop }}; width: 13px; height: 13px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4);"></div>
+            </div>
+            <div onClick="{{ onHueClick }}" style="position: relative; width: 12px; height: 96px; border-radius: 6px; cursor: pointer; background-image: linear-gradient(to bottom, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
+              <div style="position: absolute; left: -2px; right: -2px; top: {{ hueTop }}; height: 6px; margin-top: -3px; border-radius: 3px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4);"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <div style="padding: 0 14px; border-bottom: 1px solid #3a3b40;">
+        <input value="{{ pickerQuery }}" onChange="{{ onPickerQuery }}" placeholder="{{ pickerPlaceholder }}" style="width: 100%; height: 44px; background: transparent; border: none; outline: none; color: #eff0f2; font-size: 14px; font-family: 'IBM Plex Sans', sans-serif;" />
+      </div>
+      <sc-if value="{{ isIconsTab }}" hint-placeholder-val="{{ true }}">
+        <div class="sp-scroll" style="height: 214px; overflow-y: auto; padding: 10px 10px 14px; display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px;">
+          <sc-for list="{{ pickerIcons }}" as="i" hint-placeholder-count="39">
+            <div onClick="{{ i.choose }}" title="{{ i.name }}" style="height: 26px; border-radius: 5px; display: grid; place-items: center; cursor: pointer; background: {{ i.bg }};" style-hover="background: #34363b;">
+              <span style="font-family: 'Material Symbols Rounded'; font-size: 19px; line-height: 1; color: {{ pickerHex }};">{{ i.name }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isEmojisTab }}" hint-placeholder-val="{{ false }}">
+        <div class="sp-scroll" style="height: 214px; overflow-y: auto; padding: 10px 10px 14px; display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px;">
+          <sc-for list="{{ pickerEmojis }}" as="e" hint-placeholder-count="26">
+            <div onClick="{{ e.choose }}" style="height: 26px; border-radius: 5px; display: grid; place-items: center; cursor: pointer; font-size: 15px;" style-hover="background: #34363b;">{{ e.char }}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-top: 1px solid #3a3b40; background: #26272a;">
+        <div style="font-size: 11.5px; color: #8a8c92;">Icon and colour are stored on the project — every identifier badge follows.</div>
+        <div style="flex: 1;"></div>
+        <div onClick="{{ closePicker }}" style="font-size: 11.5px; color: #c3c9d4; cursor: pointer;">Done</div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeSearch }}" style="position: fixed; inset: 0; background: rgba(8,9,11,.66); backdrop-filter: blur(2px); display: flex; justify-content: center; padding-top: 140px; z-index: 50;">
+    <div onClick="{{ stop }}" style="width: 620px; height: fit-content; max-height: 520px; border-radius: 12px; background: #2a2b2f; border: 1px solid #42434a; box-shadow: 0 24px 70px rgba(0,0,0,.6); overflow: hidden; display: flex; flex-direction: column;">
+      <div style="height: 48px; flex: none; display: flex; align-items: center; gap: 11px; padding: 0 16px; border-bottom: 1px solid #3a3b40;">
+        <div style="width: 11px; height: 11px; border: 1.5px solid #95979d; border-radius: 50%;"></div>
+        <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search identifiers and text" style="flex: 1; background: transparent; border: none; outline: none; color: #fafbfc; font-size: 14px; font-family: 'IBM Plex Sans', sans-serif;" />
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a8c92; border: 1px solid #3a3b40; border-radius: 4px; padding: 2px 5px;">esc</div>
+      </div>
+      <sc-if value="{{ legacyHit }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 10px 16px; background: #2e3037; border-bottom: 1px solid #3a3b40; display: flex; align-items: center; gap: 10px;">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #a2a4aa; border: 1px dashed #565a63; border-radius: 3px; padding: 1px 4px;">{{ legacyHit }}</div>
+          <div style="color: #6a6c73; font-size: 12px;">→</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 500; color: #f2f4f7;">{{ legacyTarget }}</div>
+          <div style="font-size: 11.5px; color: #a2a4aa;">legacy identifier resolved · /issue/{{ legacyHit }} redirects</div>
+        </div>
+      </sc-if>
+      <div class="sp-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 6px 0;">
+        <sc-for list="{{ results }}" as="r" hint-placeholder-count="5">
+          <div onClick="{{ r.open }}" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 16px; cursor: pointer;" style-hover="background: #333438;">
+            <div style="width: 11px; height: 11px; flex: none; border-radius: {{ r.iconRadius }}; border: 1.5px {{ r.iconStyle }} {{ r.color }}; background: {{ r.iconBg }};"></div>
+            <div style="display: flex; align-items: baseline; gap: 6px; width: 136px; flex: none;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: #eff0f2;">{{ r.id }}</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #9a9ca2; border: 1px dashed #484950; border-radius: 3px; padding: 0 3px;">{{ r.legacy }}</span>
+            </div>
+            <div style="flex: 1; min-width: 0; font-size: 12.5px; color: #dcdee1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.title }}</div>
+            <div style="flex: none; font-size: 11px; color: #95979d;">{{ r.project }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 26px 16px; text-align: center; font-size: 12.5px; color: #95979d;">Nothing matches that identifier or text.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1716,&quot;height&quot;:1066},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;'comfortable' | 'compact'&quot;,&quot;section&quot;:&quot;List&quot;},&quot;showLegacy&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;List&quot;}}">
+const ST = {
+  backlog: { name: 'Backlog', color: '#a6a8ae', iconStyle: 'dashed', iconRadius: '50%', iconBg: 'transparent', dot: '0px' },
+  todo: { name: 'Todo', color: '#a6a8ae', iconStyle: 'solid', iconRadius: '50%', iconBg: 'transparent', dot: '0px' },
+  prog: { name: 'In Progress', color: '#c9a05a', iconStyle: 'solid', iconRadius: '50%', iconBg: 'transparent', dot: '6px' },
+  review: { name: 'In Review', color: '#a99fc0', iconStyle: 'solid', iconRadius: '50%', iconBg: 'transparent', dot: '4px' },
+  done: { name: 'Done', color: '#9aa3b2', iconStyle: 'solid', iconRadius: '50%', iconBg: '#4a4e57', dot: '5px' },
+  canceled: { name: 'Canceled', color: '#95979d', iconStyle: 'solid', iconRadius: '50%', iconBg: '#3a3b40', dot: '5px' }
+};
+const ORDER = ['prog', 'todo', 'review', 'backlog', 'done', 'canceled'];
+const LB = {
+  feature: { name: 'Feature', color: '#9db1c4' },
+  imp: { name: 'Improvement', color: '#9db1c4' },
+  bug: { name: 'Bug', color: '#c48a83' },
+  demock: { name: 'de-mock', color: '#c9a05a' },
+  dash: { name: 'Dashboard', color: '#8fae97' },
+  ds: { name: 'design system', color: '#a99fc0' }
+};
+const PROJECTS = [
+  { key: 'SPI', name: 'Spira', mark: 'SP', color: '#3ecf8e', tint: '#3a3d44', count: 39, progress: '0%', summary: 'Self-hosted single-user ticketing app replacing Linear' },
+  { key: 'PFA', name: 'PFA', mark: '€', color: '#2bb0c4', tint: '#2f332f', count: 147, progress: '78%', summary: 'Personal finance app — front, nest-api, dataviz' },
+  { key: '3DE', name: '3D engine', mark: '3D', color: '#f13ec9', tint: '#332e33', count: 50, progress: '17%', summary: 'Software renderer and console for polyhedra' },
+  { key: 'IKN', name: 'Iknos', mark: 'IK', color: '#c98a2b', tint: '#33302a', count: 15, progress: '0%', summary: 'Self-hosted monitoring for the apps on ks-b' },
+  { key: 'ZEU', name: 'Zeus', mark: 'ZE', color: '#f5a623', tint: '#33322a', count: 8, progress: '0%', summary: 'Fleet control plane: ports, status, start/stop' },
+  { key: 'EXA', name: 'Exalus', mark: 'EX', color: '#1a8cff', tint: '#2e3136', count: 1, progress: '0%', summary: "PFA's UI blocks as a copy-and-own registry" },
+  { key: 'CHT', name: '1991chat', mark: 'CH', color: '#e8eaed', tint: '#332f36', count: 15, progress: '20%', summary: 'Hand-built React chat front-end' },
+  { key: 'WEA', name: 'Worldweathr', mark: 'WW', color: '#38bdf8', tint: '#2c332e', count: 62, progress: '9%', summary: 'Daily sky log, forecast agreement, leaderboard' },
+  { key: 'BMK', name: 'BKMK', mark: 'BK', color: '#f0836f', tint: '#3a3b40', count: 4, progress: '0%', summary: 'Bookmark keeper' }
+];
+function mk(rows, key) {
+  return rows.map(function (r) {
+    return { id: r[0], legacy: r[1], title: r[2], st: r[3], pri: r[4], labels: (r[5] || []).map(function (k) { return LB[k]; }), date: r[6], epic: r[7] || null, isEpic: !!r[8], epicTotal: r[9] || 0, epicDone: r[10] || 0, project: key, body: r[11] || null };
+  });
+}
+const SPI_BODY_M3 = [
+  ['h', 'What this ticket does'],
+  ['p', 'Every imported issue is renumbered under its project key. The original Linear identifier is kept in legacyIdentifier — indexed, searchable, and rendered beside the live one everywhere a row appears.'],
+  ['h', 'Rules'],
+  ['li', 'Numbering restarts at 1 per project, ordered by Linear creation date. PFA-1 is the oldest PFA issue.'],
+  ['li', 'legacyIdentifier is unique across the workspace and nullable — issues created in Spira simply have none.'],
+  ['li', 'GET /issue/COS-177 responds 308 to /issue/PFA-41. The old path never 404s, because hundreds of them live in commit messages and PR descriptions.'],
+  ['li', 'Search matches both columns. Typing COS-177 lands on PFA-41 with the resolution shown, not a fuzzy title match.'],
+  ['h', 'Out of scope'],
+  ['li', 'Comment threads and issue relations — absent from the CSV export, taken by the raw GraphQL dump instead.'],
+  ['code', 'legacyIdentifier String? @unique @db.VarChar(16)']
+];
+const ISSUES = [].concat(
+  mk([
+    ['SPI-1', 'COS-251', 'Spira — self-hosted Linear replacement', 'backlog', 2, [], 'Jul 28', null, true, 39, 3],
+    ['SPI-2', 'COS-252', 'M1 — Full CSV export of the Linear workspace', 'prog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-3', 'COS-253', 'F1 — Repo scaffold: Next 16, TypeScript, Biome, Tailwind v4, shadcn', 'done', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-4', 'COS-254', 'F2 — Prisma schema and first migration', 'todo', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-5', 'COS-255', 'F3 — Dev environment: MySQL, Redis, env config and seed', 'todo', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-6', 'COS-256', 'A1 — Session layer: Redis store and httpOnly cookie', 'backlog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-7', 'COS-257', 'A2 — CSRF token: mint, rotate and validate', 'backlog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-8', 'COS-258', 'A3 — Login, logout and route protection', 'backlog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-9', 'COS-259', 'A4 — Login rate limiting and password change', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-10', 'COS-260', 'P1 — Route handler conventions: validation, error shape, auth wrapper', 'backlog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-11', 'COS-261', 'P2 — Projects API', 'backlog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-12', 'COS-262', 'P3 — Issues API and identifier allocation', 'backlog', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-13', 'COS-263', 'P4 — Labels API and issue-label assignment', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-14', 'COS-264', 'P5 — Epic assignment and relations API', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-15', 'COS-265', 'P6 — Saved views API', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-16', 'COS-266', 'U1 — App shell: sidebar, header and navigation', 'done', 2, [], 'Jul 28', 'SPI-1'],
+    ['SPI-17', 'COS-267', 'U2 — Design tokens and dark theme', 'done', 2, ['ds'], 'Jul 28', 'SPI-1'],
+    ['SPI-18', 'COS-268', 'R1 — Projects list page', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-19', 'COS-269', 'R2 — Project create/edit form and the key rules', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-20', 'COS-270', 'R3 — Project overview page', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-21', 'COS-271', 'I1 — Markdown editor with live preview', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-22', 'COS-272', 'I2 — Markdown renderer and ticket reference chips', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-23', 'COS-273', 'I3 — Issue list layout grouped by status', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-24', 'COS-284', 'M3 — Renumbering, legacy identifiers and redirects', 'backlog', 2, [], 'Jul 28', 'SPI-1', false, 0, 0, SPI_BODY_M3],
+    ['SPI-25', 'COS-274', 'I4 — Display properties and ordering', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-26', 'COS-275', 'I5 — Issue detail page and properties panel', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-27', 'COS-276', 'I6 — Issue creation', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-28', 'COS-277', 'V1 — Filter bar with URL state', 'backlog', 2, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-29', 'COS-278', 'V2 — Saved views', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-30', 'COS-279', 'E1 — Epics: contained issues and progress', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-31', 'COS-280', 'E2 — Relations UI: blocks and blocked by', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-32', 'COS-281', 'S1 — Search across identifiers and text', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-33', 'COS-282', 'U3 — Settings: labels and account', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-34', 'COS-283', 'M2 — CSV importer: parsing and mapping', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-35', 'COS-285', 'C1 — API tokens', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-36', 'COS-286', 'C2 — MCP server for Spira', 'backlog', 3, ['feature'], 'Jul 28', 'SPI-1'],
+    ['SPI-37', 'COS-287', 'D1 — Provision ks-b: MySQL, Redis, nginx, systemd', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-38', 'COS-288', 'D2 — Deploy pipeline and backups', 'backlog', 3, [], 'Jul 28', 'SPI-1'],
+    ['SPI-39', 'COS-289', 'M4 — Cutover', 'backlog', 3, [], 'Jul 28', 'SPI-1']
+  ], 'SPI'),
+  mk([
+    ['PFA-3', 'COS-29', 'Passer le front à TypeScript 7', 'todo', 4, ['imp'], 'Jul 9'],
+    ['PFA-41', 'COS-177', 'Uniformiser les schémas de formulaire « saisie de montant »', 'backlog', 4, ['imp'], 'Jul 26', null, false, 0, 0, [
+      ['p', "Sorti de PFA-22 (audit types/Zod front 2/2), reliquat du chantier 2. À ne pas faire tant qu'il n'y a pas de déclencheur réel — un 3e formulaire de saisie de montant, ou le chantier multi-devises."],
+      ['h', 'Déjà réglé, ne pas re-proposer'],
+      ['p', "L'objectif « messages FR dupliqués » du ticket d'origine est caduc : la copie de validation vit dans @text (arbres fr + en). Les schémas sont des factories qui reçoivent une tranche de dictionnaire."],
+      ['h', 'Ce qui reste'],
+      ['li', 'Renommer spendingLabel / spendingAmount / spendingDate en label / amount / date.'],
+      ['li', 'Extraire un makeMoneyEntrySchema(messages, { dateRequired }) partagé dans src/schemas/forms/.'],
+      ['li', 'Regrouper les paires de messages FR/EN identiques dans une tranche common.validation.']
+    ]],
+    ['PFA-36', 'COS-165', 'Découper StatsService en services par consommateur (refacto pur)', 'backlog', 3, ['imp'], 'Jul 22'],
+    ['PFA-31', 'COS-153', 'Indexer les tables financières sur (userID, date)', 'backlog', 3, ['imp'], 'Jul 21'],
+    ['PFA-24', 'COS-133', 'Dashboard : curseur par défaut sur « Mois en cours » désactivé', 'backlog', 3, ['dash', 'imp'], 'Jul 18'],
+    ['PFA-12', 'COS-79', 'Corriger les warnings Biome noNonNullAssertion du front', 'backlog', 3, ['imp'], 'Jul 14'],
+    ['PFA-8', 'COS-53', 'Refacto archi : Server Components (fetch initial serveur + îlots client)', 'backlog', 3, ['imp'], 'Jul 10'],
+    ['PFA-4', 'COS-31', 'Ajouter des tests unitaires (back nest-api)', 'backlog', 3, ['imp'], 'Jul 9'],
+    ['PFA-2', 'COS-28', 'Passer le back (nest-api) à TypeScript 7', 'backlog', 3, ['imp'], 'Jul 9'],
+    ['PFA-47', 'COS-185', 'Dépenses : animer les chiffres des widgets et la barre de répartition', 'done', 3, ['dash', 'imp'], 'Jul 27'],
+    ['PFA-45', 'COS-183', 'Stats : tracer les sparklines KPI en une fois', 'done', 3, ['imp'], 'Jul 27'],
+    ['PFA-44', 'COS-182', 'Stats jour de la semaine : échelle robuste + mobile', 'done', 3, ['imp'], 'Jul 27'],
+    ['PFA-35', 'COS-163', 'Mobile : sous-menu Langue hors écran → bloc compte en bas du drawer', 'done', 3, ['bug', 'imp'], 'Jul 22'],
+    ['PFA-33', 'COS-161', "Navbar : flouter la page quand un overlay s'ouvre + animer le calendrier", 'done', 3, ['ds', 'imp'], 'Jul 22']
+  ], 'PFA'),
+  mk([
+    ['3DE-2', 'COS-201', 'Polyhedra from The Symmetries of Things', 'prog', 2, [], 'Jul 27', null, true, 10, 7],
+    ['3DE-15', 'COS-235', 'de-mock — the engine behind the console', 'backlog', 2, ['demock'], 'Jul 28', null, true, 15, 0],
+    ['3DE-16', 'COS-236', 'E2 — Projection: orthographic, FOV and clip planes', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-17', 'COS-237', 'E1a — Camera rig: absolute orientation, view presets and readouts', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-18', 'COS-238', 'E1b — Pointer orbit, wheel zoom, pinch and double-tap', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-19', 'COS-239', 'E6 — Renderer instrumentation: staged timings, draw calls, fill rate', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-20', 'COS-240', 'E4a — Materials: material model, base colour and mesh scale', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-21', 'COS-241', 'E3a — Face normals and the directional key light', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-22', 'COS-242', 'E3b — Software scanline rasteriser with a depth buffer', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-23', 'COS-243', 'E3c — GOURAUD, DEPTH, NORMALS and POINTS modes', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-24', 'COS-244', 'E3d — Dithering and edge antialiasing', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-25', 'COS-245', 'E4b — Procedural textures, spherical UVs and tiling', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-26', 'COS-246', 'E5a — Ground under the camera: shared projector, grid and world units', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-27', 'COS-247', 'E5b — Ground shadow, distance fog and the layer-pass count', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-28', 'COS-248', 'E7 — Scene model: real objects, per-object visibility and selection', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-29', 'COS-249', 'E8 — Session actions and keyboard', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15'],
+    ['3DE-30', 'COS-250', 'E9b — Resize, DPR and the pixel budget', 'backlog', 3, ['demock'], 'Jul 28', '3DE-15']
+  ], '3DE'),
+  mk([
+    ['IKN-1', 'COS-190', 'Epic: Iknos — self-hosted monitoring for ks-b', 'backlog', 2, [], 'Jul 24', null, true, 15, 0],
+    ['IKN-2', 'COS-191', 'ECS log ingestion and retention windows', 'backlog', 3, ['feature'], 'Jul 24', 'IKN-1'],
+    ['IKN-3', 'COS-192', 'Prometheus scrape config per app', 'backlog', 3, ['feature'], 'Jul 24', 'IKN-1'],
+    ['IKN-4', 'COS-193', 'Grouped errors: fingerprint and first/last seen', 'backlog', 3, ['feature'], 'Jul 24', 'IKN-1']
+  ], 'IKN'),
+  mk([
+    ['ZEU-1', 'COS-120', 'Port registry: one source of truth for ks-b', 'backlog', 2, ['feature'], 'Jul 16'],
+    ['ZEU-2', 'COS-121', 'Start / stop / restart an app from the control plane', 'backlog', 3, ['feature'], 'Jul 16'],
+    ['ZEU-3', 'COS-122', 'Port reassignment with nginx reload', 'backlog', 3, ['feature'], 'Jul 16']
+  ], 'ZEU'),
+  mk([['EXA-1', 'COS-231', 'Registry scaffold: cssVars, css and copy-and-own components', 'backlog', 3, ['feature'], 'Jul 28']], 'EXA'),
+  mk([
+    ['CHT-1', 'COS-100', 'Message list virtualisation on the existing skeleton', 'done', 3, ['feature'], 'Jul 12'],
+    ['CHT-2', 'COS-101', 'Composer: drafts, paste and shortcuts', 'backlog', 3, ['feature'], 'Jul 12'],
+    ['CHT-3', 'COS-102', '@services layer: transport-agnostic client', 'backlog', 2, ['feature'], 'Jul 12']
+  ], 'CHT'),
+  mk([
+    ['WEA-55', 'COS-88', 'Community visibility opt-out (visibleInCommunity toggle)', 'todo', 3, ['feature'], 'Jul 20'],
+    ['WEA-40', 'COS-70', 'Forecast observation refresh cron', 'done', 2, [], 'Jul 15'],
+    ['WEA-41', 'COS-71', 'WeatherIcon React port', 'done', 3, ['ds'], 'Jul 15']
+  ], 'WEA'),
+  mk([['BMK-1', 'COS-300', 'Import browser bookmarks and dedupe', 'backlog', 4, [], 'Jul 29']], 'BMK')
+);
+const OV = {
+  SPI: [
+    ['h', 'Goal'],
+    ['p', 'Replace Linear with a self-hosted, single-user ticketing app. The paid plan carries a lot that goes unused, and the workspace-level prefix means all six projects share one COS- counter — COS-177 is a PFA ticket and COS-201 is a 3D engine ticket, with nothing in the identifier saying so.'],
+    ['h', 'Two hard requirements'],
+    ['p2', 'Per-project prefixes. New issues get PFA-1, 3DE-1, SPI-1 — first three letters of the project, editable and unique.'],
+    ['p2', 'Legacy references keep resolving. Hundreds of COS-xxx identifiers live in commit messages, code comments and PR descriptions. On import every issue is renumbered under its project key and its original identifier is kept in legacyIdentifier: both indexed, both searchable, the row renders PFA-12 with a subdued COS-177 beside it.'],
+    ['h', 'Architecture'],
+    ['p', 'One Next.js 16 app on ks-b behind nginx — no separate API service. Reads go straight through Prisma from Server Components; every write goes through a REST route handler under /api, because the MCP connector needs a callable HTTP surface and one write path beats two implementations of the same rules.'],
+    ['code', 'Prisma 7 · MySQL · Redis · Tailwind v4 · shadcn/ui · nuqs · zod v4 · TanStack Query · Biome'],
+    ['h', 'Model'],
+    ['p', 'Epics are ordinary issues flagged isEpic, so they get their own identifier, description and status. Other issues point at one via epicId. An epic cannot sit inside an epic — the hierarchy is exactly one level. Blocking is stored once as A blocks B; blocked by is the same row read backwards, so the two views cannot disagree.'],
+    ['h', 'Not in v1'],
+    ['p', 'Board layout, drag & drop, comments, activity history, command palette, keyboard shortcuts, milestones, cycles, initiatives, attachments, assignees, estimates, multi-user.']
+  ],
+  PFA: [['h', 'Goal'], ['p', 'Personal finance app: expenses, exceptional entries, statistics and a dashboard, with a hand-rolled dataviz layer. Front in Next, back in nest-api, multilingual FR/EN through the @text module.']],
+  '3DE': [['h', 'Goal'], ['p', 'A software renderer and its console: scanline rasteriser, depth buffer, procedural materials, and a debug panel that reports staged timings, draw calls and fill rate. The de-mock epic replaces every fake readout with a real one.']],
+  IKN: [['h', 'Goal'], ['p', 'Self-hosted monitoring for the apps on ks-b: ECS logs, Prometheus metrics, grouped errors and alerts, with no lock-in.']],
+  ZEU: [['h', 'Goal'], ['p', 'Fleet control plane for the apps on ks-b: port registry, status, start/stop, port reassignment.']],
+  EXA: [['h', 'Goal'], ['p', "Extract PFA's generic UI building blocks (dataviz, month-picker) into app-agnostic modules, reusable through a shadcn-style registry — copy-and-own, not a package."]],
+  CHT: [['h', 'Goal'], ['p', 'Hand-built React chat UI on top of the existing skeleton and @services layer.']],
+  WEA: [['h', 'Goal'], ['p', 'Daily sky log — declare the weather over your city, compare it to the forecast, and see everyone ranked by participation.']],
+  BMK: [['h', 'Goal'], ['p', 'A place for bookmarks that is not a browser profile.']]
+};
+const BLOCK_STYLE = {
+  h: { size: '15px', weight: '600', color: '#fafbfc', lh: '1.4', margin: '26px 0 10px', pad: '0', family: "'IBM Plex Sans', sans-serif" },
+  p: { size: '14px', weight: '400', color: '#c6c8cd', lh: '1.65', margin: '0 0 12px', pad: '0', family: "'IBM Plex Sans', sans-serif" },
+  p2: { size: '14px', weight: '400', color: '#c7cbd1', lh: '1.65', margin: '0 0 12px', pad: '14px', family: "'IBM Plex Sans', sans-serif" },
+  li: { size: '13.5px', weight: '400', color: '#c6c8cd', lh: '1.6', margin: '0 0 8px', pad: '16px', family: "'IBM Plex Sans', sans-serif" },
+  code: { size: '11.5px', weight: '400', color: '#b0b2b8', lh: '1.7', margin: '14px 0 14px', pad: '12px', family: "'IBM Plex Mono', monospace" }
+};
+
+const PICONS = { SPI: 'graph_3', PFA: 'euro', '3DE': 'deployed_code', IKN: 'monitor_heart', ZEU: 'bolt', EXA: 'widgets', CHT: 'forum', WEA: 'partly_cloudy_day', BMK: 'bookmark' };
+const ICON_NAMES = ['deployed_code','graph_3','hub','layers','api','dns','memory','terminal','code','bug_report','rocket_launch','cloud_upload','database','folder','description','insert_chart','monitoring','euro','savings','receipt_long','shopping_bag','work','calendar_month','schedule','flag','bookmark','label','key','lock','shield','visibility','notifications','settings','build','construction','handyman','hardware','science','biotech','experiment','psychology','school','menu_book','edit','draw','palette','brush','photo_camera','movie','music_note','mic','radio','album','headphones','sports_soccer','sports_basketball','fitness_center','directions_run','hiking','sailing','pedal_bike','flight','directions_car','train','local_shipping','package_2','inventory','storefront','sell','mood','favorite','pets','eco','park','potted_plant','forest','terrain','sunny','cloud','thunderstorm','bolt','local_fire_department','water_drop','umbrella','partly_cloudy_day','ac_unit','public','explore','map','place','home','apartment','domain','forum','chat','mail','call','group','person','badge','verified','star','bolt'];
+const EMOJI_CHARS = ['\u{1F9EA}','\u{1F4E6}','\u{1F4C8}','\u{1F4B0}','\u{1F5FA}','\u{1F9F1}','\u{1F529}','\u{1F5C3}','\u{1F4DA}','\u{1F3AF}','\u{1F680}','\u{2699}','\u{1F50D}','\u{1F511}','\u{1F512}','\u{1F6E1}','\u{1F514}','\u{1F4CC}','\u{1F4CE}','\u{1F4C5}','\u{23F1}','\u{1F3C1}','\u{1F3A8}','\u{1F58C}','\u{1F3B5}','\u{1F3AC}','\u{1F3A7}','\u{26BD}','\u{1F3C3}','\u{1F6B4}','\u{2708}','\u{1F686}','\u{1F30D}','\u{1F332}','\u{1F331}','\u{2600}','\u{26A1}','\u{1F327}','\u{1F4A7}','\u{2744}'];
+const EMOJI_NAMES = {};
+(function () {
+  const pairs = [['\u{1F9EA}','test lab science'],['\u{1F4E6}','package box'],['\u{1F4C8}','chart stats graph'],['\u{1F4B0}','money finance euro'],['\u{1F5FA}','map geo'],['\u{1F9F1}','brick build'],['\u{1F529}','nut bolt tools'],['\u{1F5C3}','files archive database'],['\u{1F4DA}','books docs'],['\u{1F3AF}','target goal'],['\u{1F680}','rocket ship deploy'],['\u{2699}','settings gear'],['\u{1F50D}','search find'],['\u{1F511}','key auth'],['\u{1F512}','lock security'],['\u{1F6E1}','shield security'],['\u{1F514}','bell notification'],['\u{1F4CC}','pin'],['\u{1F4CE}','clip attachment'],['\u{1F4C5}','calendar date'],['\u{23F1}','timer time'],['\u{1F3C1}','flag finish'],['\u{1F3A8}','palette design art'],['\u{1F58C}','brush design'],['\u{1F3B5}','music note'],['\u{1F3AC}','movie video'],['\u{1F3A7}','headphones audio'],['\u{26BD}','football sport'],['\u{1F3C3}','run sport'],['\u{1F6B4}','bike sport'],['\u{2708}','plane travel'],['\u{1F686}','train travel'],['\u{1F30D}','world globe earth'],['\u{1F332}','tree forest nature'],['\u{1F331}','plant seed nature'],['\u{2600}','sun weather'],['\u{26A1}','bolt energy'],['\u{1F327}','rain weather cloud'],['\u{1F4A7}','water drop'],['\u{2744}','snow cold weather']];
+  pairs.forEach(function (p) { EMOJI_NAMES[p[0]] = p[1]; });
+})();
+function hex2hsv(hex) {
+  const h = (hex || '#9fb3a6').replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let hue = 0;
+  if (d) {
+    if (mx === r) hue = 60 * (((g - b) / d) % 6);
+    else if (mx === g) hue = 60 * ((b - r) / d + 2);
+    else hue = 60 * ((r - g) / d + 4);
+  }
+  if (hue < 0) hue += 360;
+  return { h: hue, s: mx ? d / mx : 0, v: mx };
+}
+function hsv2hex(h, sat, val) {
+  const f = function (n) {
+    const k = (n + h / 60) % 6;
+    const x = val - val * sat * Math.max(Math.min(k, 4 - k, 1), 0);
+    return Math.round(x * 255).toString(16).padStart(2, '0');
+  };
+  return '#' + f(5) + f(3) + f(1);
+}
+
+class Component extends DCLogic {
+  state = {
+    screen: 'issues', project: 'SPI', issueId: 'SPI-24',
+    grouping: 'status', filterOn: false, showLegacy: true,
+    searchOpen: false, query: 'COS-177', collapsed: {}, history: [],
+    pickerFor: null, pickerX: '0px', pickerY: '0px', pickerTab: 'icons', pickerQuery: '',
+    pickH: 205, pickS: 0.34, pickV: 0.78, icons: {}, colors: {}
+  };
+
+  nav(patch) {
+    this.setState(function (s) {
+      const next = Object.assign({}, s, patch);
+      next.history = s.history.concat([{ screen: s.screen, project: s.project, issueId: s.issueId }]).slice(-12);
+      return next;
+    });
+  }
+
+  block(b) {
+    const st = BLOCK_STYLE[b[0]] || BLOCK_STYLE.p;
+    return Object.assign({ text: b[0] === 'li' ? '— ' + b[1] : b[1] }, st);
+  }
+
+  issuesFor(key) { return ISSUES.filter(function (i) { return i.project === key; }); }
+
+  rowFor(i, indent) {
+    const self = this;
+    const st = ST[i.st];
+    const pri = i.pri;
+    const parent = i.epic && this.state.grouping === 'status' ? ISSUES.filter(function (x) { return x.id === i.epic; })[0] : null;
+    return {
+      id: i.id,
+      legacy: this.props.showLegacy === false ? null : (this.state.showLegacy ? i.legacy : null),
+      idColor: i.isEpic ? '#eff0f2' : '#b0b2b8',
+      title: i.title,
+      titleWeight: i.isEpic ? '600' : '400',
+      titleColor: i.isEpic ? '#fafbfc' : '#eff0f2',
+      isEpic: i.isEpic,
+      bg: i.isEpic ? '#2f3137' : 'transparent',
+      accentW: i.isEpic ? '2px' : '0px',
+      accent: i.isEpic ? '#9aa3b2' : 'transparent',
+      h: i.isEpic ? '42px' : (this.props.density === 'compact' ? '30px' : '36px'),
+      indent: indent + 'px',
+      color: st.color, iconStyle: st.iconStyle, iconRadius: st.iconRadius, iconBg: st.iconBg, dot: st.dot,
+      labels: i.labels,
+      parentChip: parent ? parent.title : null,
+      progressText: i.isEpic ? i.epicDone + '/' + i.epicTotal : null,
+      progressDeg: i.isEpic ? Math.round((i.epicDone / i.epicTotal) * 360) + 'deg' : '0deg',
+      p1: pri >= 4 ? '1' : (pri ? '1' : '.3'),
+      p2: pri <= 3 && pri > 0 ? '1' : '.3',
+      p3: pri <= 2 && pri > 0 ? '1' : '.3',
+      date: i.date,
+      open: function () { self.nav({ screen: 'issue', issueId: i.id, searchOpen: false }); }
+    };
+  }
+
+  buildGroups() {
+    const self = this;
+    let list = this.issuesFor(this.state.project);
+    if (this.state.filterOn) list = list.filter(function (i) { return i.labels.some(function (l) { return l.name === 'Feature'; }); });
+    const groups = [];
+    if (this.state.grouping === 'epic') {
+      const epics = list.filter(function (i) { return i.isEpic; });
+      epics.forEach(function (e) {
+        const kids = list.filter(function (i) { return i.epic === e.id; });
+        kids.sort(function (a, b) { return ORDER.indexOf(a.st) - ORDER.indexOf(b.st); });
+        groups.push({
+          key: e.id, label: e.title, identifier: e.id, legacy: self.state.showLegacy ? e.legacy : null,
+          count: String(kids.length), accent: '#9aa3b2', headerBg: '#2f3137',
+          color: ST[e.st].color, iconStyle: ST[e.st].iconStyle, iconRadius: ST[e.st].iconRadius, iconBg: ST[e.st].iconBg, dot: ST[e.st].dot,
+          progressText: e.epicDone + '/' + e.epicTotal, progressDeg: Math.round((e.epicDone / e.epicTotal) * 360) + 'deg',
+          hint: 'epic', toggle: function () { self.toggleGroup(e.id); },
+          rows: self.state.collapsed[e.id] ? [] : kids.map(function (i) { return self.rowFor(i, 40); })
+        });
+      });
+      const loose = list.filter(function (i) { return !i.isEpic && !i.epic; });
+      if (loose.length) {
+        loose.sort(function (a, b) { return ORDER.indexOf(a.st) - ORDER.indexOf(b.st); });
+        groups.push({
+          key: 'none', label: 'No epic', identifier: null, legacy: null, count: String(loose.length),
+          accent: '#3a3b40', headerBg: '#2c2d31', color: '#a6a8ae', iconStyle: 'dashed', iconRadius: '3px', iconBg: 'transparent', dot: '0px',
+          progressText: null, progressDeg: '0deg', hint: '', toggle: function () { self.toggleGroup('none'); },
+          rows: self.state.collapsed.none ? [] : loose.map(function (i) { return self.rowFor(i, 16); })
+        });
+      }
+      return groups;
+    }
+    ORDER.forEach(function (k) {
+      const rows = list.filter(function (i) { return i.st === k; });
+      if (!rows.length) return;
+      rows.sort(function (a, b) { return (b.isEpic ? 1 : 0) - (a.isEpic ? 1 : 0); });
+      groups.push({
+        key: k, label: ST[k].name, identifier: null, legacy: null, count: String(rows.length),
+        accent: '#3a3b40', headerBg: '#2c2d31',
+        color: ST[k].color, iconStyle: ST[k].iconStyle, iconRadius: ST[k].iconRadius, iconBg: ST[k].iconBg, dot: ST[k].dot,
+        progressText: null, progressDeg: '0deg', hint: '',
+        toggle: function () { self.toggleGroup(k); },
+        rows: self.state.collapsed[k] ? [] : rows.map(function (i) { return self.rowFor(i, 16); })
+      });
+    });
+    return groups;
+  }
+
+  toggleGroup(k) {
+    this.setState(function (s) {
+      const c = Object.assign({}, s.collapsed);
+      c[k] = !c[k];
+      return { collapsed: c };
+    });
+  }
+
+  renderVals() {
+    const self = this;
+    const s = this.state;
+    const proj = PROJECTS.filter(function (p) { return p.key === s.project; })[0];
+    const issue = ISSUES.filter(function (i) { return i.id === s.issueId; })[0] || ISSUES[0];
+    const epic = issue.epic ? ISSUES.filter(function (i) { return i.id === issue.epic; })[0] : null;
+    const on = function (screen) { return s.screen === screen; };
+    const pickHex = hsv2hex(s.pickH, s.pickS, s.pickV);
+    const iconOf = function (key) { return s.icons[key] || PICONS[key]; };
+    const colorOf = function (key) { return s.colors[key] || (PROJECTS.filter(function (p) { return p.key === key; })[0] || {}).color; };
+    const setIcon = function (name) {
+      const key = s.pickerFor;
+      self.setState(function (st) {
+        const ic = Object.assign({}, st.icons); ic[key] = name;
+        return { icons: ic };
+      });
+    };
+    const openPicker = function (key) {
+      return function (e) {
+        e.stopPropagation();
+        const r = e.currentTarget.getBoundingClientRect();
+        const PW = 414, PH = 509, M = 12;
+        const frame = e.currentTarget.closest('[data-app-frame]');
+        const fr = frame ? frame.getBoundingClientRect() : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+        let top = r.bottom + 10;
+        if (top + PH + M > fr.bottom) top = r.top - PH - 10;
+        if (top < fr.top + M) top = Math.max(fr.top + M, fr.bottom - PH - M);
+        let left = r.left - 26;
+        if (left + PW + M > fr.right) left = fr.right - PW - M;
+        if (left < fr.left + M) left = fr.left + M;
+        const hsv = hex2hsv(colorOf(key));
+        self.setState({ pickerFor: key, pickerX: Math.round(left) + 'px', pickerY: Math.round(top) + 'px', pickerQuery: '', pickerTab: 'icons', pickH: hsv.h, pickS: hsv.s, pickV: hsv.v });
+      };
+    };
+    const q = (s.query || '').trim().toLowerCase();
+    const matches = q ? ISSUES.filter(function (i) {
+      return i.id.toLowerCase().indexOf(q) === 0 || i.legacy.toLowerCase().indexOf(q) === 0 || i.title.toLowerCase().indexOf(q) >= 0;
+    }).slice(0, 8) : ISSUES.slice(0, 6);
+    const legacyExact = ISSUES.filter(function (i) { return i.legacy.toLowerCase() === q; })[0];
+    const urls = {
+      projects: '/projects', issues: '/' + s.project.toLowerCase() + '/issues',
+      overview: '/' + s.project.toLowerCase() + '/overview', issue: '/issue/' + s.issueId,
+      import: '/settings/import', settings: '/settings/mcp', system: '/settings/appearance'
+    };
+    const relFor = function (id) {
+      const r = ISSUES.filter(function (i) { return i.id === id; })[0];
+      return r ? { id: r.id, title: r.title, open: function () { self.nav({ screen: 'issue', issueId: r.id }); } } : null;
+    };
+    const priName = { 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low' }[issue.pri] || 'No priority';
+
+    return {
+      url: urls[s.screen] || '/',
+      back: function () {
+        self.setState(function (st) {
+          if (!st.history.length) return {};
+          const prev = st.history[st.history.length - 1];
+          return { screen: prev.screen, project: prev.project, issueId: prev.issueId, history: st.history.slice(0, -1) };
+        });
+      },
+      isIssues: on('issues'), isOverview: on('overview'), isProjects: on('projects'),
+      isIssue: on('issue'), isImport: on('import'), isSettings: on('settings'), isSystem: on('system'),
+
+      goProjects: function () { self.nav({ screen: 'projects' }); },
+      goViews: function () { self.nav({ screen: 'issues', filterOn: true }); },
+      goOverview: function () { self.nav({ screen: 'overview' }); },
+      goImport: function () { self.nav({ screen: 'import' }); },
+      goSettings: function () { self.nav({ screen: 'settings' }); },
+      goSystem: function () { self.nav({ screen: 'system' }); },
+      openSearch: function () { self.setState({ searchOpen: true }); },
+      closeSearch: function () { self.setState({ searchOpen: false }); },
+      stop: function (e) { e.stopPropagation(); },
+      searchOpen: s.searchOpen, query: s.query,
+      onQuery: function (e) { self.setState({ query: e.target.value }); },
+      results: matches.map(function (i) {
+        const st = ST[i.st];
+        return {
+          id: i.id, legacy: i.legacy, title: i.title, project: i.project,
+          color: st.color, iconStyle: st.iconStyle, iconRadius: st.iconRadius, iconBg: st.iconBg,
+          open: function () { self.nav({ screen: 'issue', issueId: i.id, project: i.project, searchOpen: false }); }
+        };
+      }),
+      noResults: !!q && matches.length === 0,
+      legacyHit: legacyExact ? legacyExact.legacy : null,
+      legacyTarget: legacyExact ? legacyExact.id : null,
+
+      pickerOpen: !!s.pickerFor, pickerX: s.pickerX, pickerY: s.pickerY,
+      closePicker: function () { self.setState({ pickerFor: null }); },
+      isIconsTab: s.pickerTab === 'icons', isEmojisTab: s.pickerTab === 'emojis',
+      tabIcons: function () { self.setState({ pickerTab: 'icons' }); },
+      tabEmojis: function () { self.setState({ pickerTab: 'emojis' }); },
+      tabIconsColor: s.pickerTab === 'icons' ? '#fafbfc' : '#a2a4aa',
+      tabIconsLine: s.pickerTab === 'icons' ? '#c3c9d4' : 'transparent',
+      tabEmojisColor: s.pickerTab === 'emojis' ? '#fafbfc' : '#a2a4aa',
+      tabEmojisLine: s.pickerTab === 'emojis' ? '#c3c9d4' : 'transparent',
+      pickerHex: pickHex,
+      hueHex: hsv2hex(s.pickH, 1, 1),
+      knobLeft: Math.round(s.pickS * 100) + '%',
+      knobTop: Math.round((1 - s.pickV) * 100) + '%',
+      hueTop: Math.round((s.pickH / 360) * 100) + '%',
+      contrastNote: s.pickV > 0.92 ? 'Contrast has been adjusted' : 'Readable on dark surfaces',
+      onFieldClick: function (e) {
+        const r = e.currentTarget.getBoundingClientRect();
+        const sat = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+        const val = Math.min(1, Math.max(0.15, 1 - (e.clientY - r.top) / r.height));
+        self.setState(function (st) {
+          const co = Object.assign({}, st.colors); co[st.pickerFor] = hsv2hex(st.pickH, sat, val);
+          return { pickS: sat, pickV: val, colors: co };
+        });
+      },
+      onHueClick: function (e) {
+        const r = e.currentTarget.getBoundingClientRect();
+        const hue = Math.min(359, Math.max(0, ((e.clientY - r.top) / r.height) * 360));
+        self.setState(function (st) {
+          const co = Object.assign({}, st.colors); co[st.pickerFor] = hsv2hex(hue, st.pickS, st.pickV);
+          return { pickH: hue, colors: co };
+        });
+      },
+      pickerQuery: s.pickerQuery,
+      onPickerQuery: function (e) { self.setState({ pickerQuery: e.target.value }); },
+      pickerIcons: ICON_NAMES.filter(function (n) {
+        return !s.pickerQuery || n.indexOf(s.pickerQuery.toLowerCase().replace(/ /g, '_')) >= 0;
+      }).map(function (n) {
+        return { name: n, bg: n === iconOf(s.pickerFor) ? '#3a3b40' : 'transparent', choose: function () { setIcon(n); } };
+      }),
+      pickerPlaceholder: s.pickerTab === 'icons' ? 'Search icons...' : 'Search emojis...',
+      pickerEmojis: EMOJI_CHARS.filter(function (c) {
+        return !s.pickerQuery || (EMOJI_NAMES[c] || '').indexOf(s.pickerQuery.toLowerCase()) >= 0;
+      }).map(function (c) {
+        return { char: c, choose: function () { setIcon(c); } };
+      }),
+      navProjectsColor: on('projects') ? '#fafbfc' : '#c6c8cd',
+      navProjectsBg: on('projects') ? '#34363b' : 'transparent',
+      navViewsColor: '#c6c8cd', navViewsBg: 'transparent',
+      navImportColor: on('import') ? '#fafbfc' : '#b0b2b8',
+      navImportBg: on('import') ? '#34363b' : 'transparent',
+      navSettingsColor: on('settings') ? '#fafbfc' : '#b0b2b8',
+      navSettingsBg: on('settings') ? '#34363b' : 'transparent',
+      navSystemColor: on('system') ? '#fafbfc' : '#b0b2b8',
+      navSystemBg: on('system') ? '#34363b' : 'transparent',
+
+      projects: PROJECTS.map(function (p) {
+        const active = p.key === s.project && (on('issues') || on('overview') || on('issue'));
+        return Object.assign({}, p, {
+          icon: iconOf(p.key), color: colorOf(p.key), tint: 'transparent',
+          navBg: active ? '#34363b' : 'transparent',
+          navColor: active ? '#fafbfc' : '#c6c8cd',
+          open: function () { self.nav({ screen: 'issues', project: p.key }); }
+        });
+      }),
+      projectRows: PROJECTS.map(function (p) {
+        return Object.assign({}, p, { count: String(p.count), icon: iconOf(p.key), color: colorOf(p.key), tint: 'transparent', pick: openPicker(p.key), open: function () { self.nav({ screen: 'issues', project: p.key }); } });
+      }),
+
+      crumbProject: on('projects') ? null : proj.name,
+      crumbIcon: iconOf(proj.key), crumbTint: 'transparent', crumbColor: colorOf(proj.key),
+      crumbLeaf: on('projects') ? 'All projects' : on('issues') ? 'Issues' : on('overview') ? 'Overview'
+        : on('issue') ? issue.id : on('import') ? 'Import' : on('settings') ? 'Settings' : 'Design system',
+
+      tabs: [
+        { label: 'Overview', go: function () { self.nav({ screen: 'overview' }); }, color: on('overview') ? '#fafbfc' : '#b0b2b8', bg: on('overview') ? '#3a3b40' : 'transparent' },
+        { label: 'Issues', go: function () { self.nav({ screen: 'issues' }); }, color: on('issues') ? '#fafbfc' : '#b0b2b8', bg: on('issues') ? '#3a3b40' : 'transparent' }
+      ],
+      savedViews: [
+        { label: 'Active work', dot: '#c9a05a', color: '#c6c8cd', bg: 'transparent', border: '#3a3b40', go: function () { self.setState({ filterOn: false, grouping: 'status' }); } },
+        { label: 'Features only', dot: '#9aa3b2', color: s.filterOn ? '#fafbfc' : '#c6c8cd', bg: s.filterOn ? '#34363b' : 'transparent', border: s.filterOn ? '#565a63' : '#3a3b40', go: function () { self.setState({ filterOn: true }); } }
+      ],
+      filterOn: s.filterOn,
+      filterColor: s.filterOn ? '#fafbfc' : '#c6c8cd',
+      filterBg: s.filterOn ? '#34363b' : 'transparent',
+      toggleFilter: function () { self.setState(function (st) { return { filterOn: !st.filterOn }; }); },
+      grouping: s.grouping,
+      groupingLabel: s.grouping === 'status' ? 'Status' : 'Epic',
+      toggleGrouping: function () { self.setState(function (st) { return { grouping: st.grouping === 'status' ? 'epic' : 'status', collapsed: {} }; }); },
+      legacyLabel: s.showLegacy ? 'Shown' : 'Hidden',
+      toggleLegacy: function () { self.setState(function (st) { return { showLegacy: !st.showLegacy }; }); },
+      groups: this.buildGroups(),
+
+      ovName: proj.name, ovKey: proj.key, ovIcon: iconOf(proj.key), ovTint: 'transparent', ovColor: colorOf(proj.key), ovPick: openPicker(proj.key),
+      ovSummary: proj.summary, ovCount: String(proj.count), ovProgress: proj.progress,
+      ovLegacyNote: proj.key === 'SPI' ? 'Native project — no legacy identifiers' : proj.count + ' issues renumbered from COS-, legacy identifiers preserved',
+      ovBlocks: (OV[proj.key] || []).map(function (b) { return self.block(b); }),
+
+      dId: issue.id, dLegacy: issue.legacy, dTitle: issue.title,
+      dLegacyNote: 'was ' + issue.legacy + ' in Linear',
+      dEpicId: epic ? epic.id : null, dEpicTitle: epic ? epic.title : null,
+      dOpenEpic: function () { if (epic) self.nav({ screen: 'issue', issueId: epic.id }); },
+      dBlocks: (issue.body || [['p', 'No description yet.']]).map(function (b) { return self.block(b); }),
+      dProps: [
+        { label: 'Status', value: ST[issue.st].name, color: ST[issue.st].color, iconStyle: ST[issue.st].iconStyle, radius: '50%', iconBg: ST[issue.st].iconBg },
+        { label: 'Priority', value: priName, color: '#a6a8ae', iconStyle: 'solid', radius: '3px', iconBg: 'transparent' },
+        { label: 'Labels', value: issue.labels.length ? issue.labels.map(function (l) { return l.name; }).join(', ') : 'None', color: issue.labels.length ? issue.labels[0].color : '#4d4e56', iconStyle: 'solid', radius: '50%', iconBg: issue.labels.length ? issue.labels[0].color : 'transparent' },
+        { label: 'Project', value: PROJECTS.filter(function (p) { return p.key === issue.project; })[0].name, color: PROJECTS.filter(function (p) { return p.key === issue.project; })[0].color, iconStyle: 'solid', radius: '3px', iconBg: 'transparent' },
+        { label: 'Type', value: issue.isEpic ? 'Epic · ' + issue.epicTotal + ' issues' : 'Issue', color: issue.isEpic ? '#c3c9d4' : '#a6a8ae', iconStyle: 'solid', radius: '3px', iconBg: 'transparent' }
+      ],
+      dRelations: [
+        Object.assign({ kind: 'Blocked by' }, relFor(issue.project === 'SPI' ? 'SPI-34' : issue.project === 'PFA' ? 'PFA-36' : '3DE-16') || {}),
+        Object.assign({ kind: 'Blocks' }, relFor(issue.project === 'SPI' ? 'SPI-39' : issue.project === 'PFA' ? 'PFA-31' : '3DE-22') || {})
+      ],
+
+      importRows: [
+        { legacy: 'COS-28', id: 'PFA-2', key: 'PFA', title: 'Passer le back (nest-api) à TypeScript 7', color: '#2bb0c4', tint: '#2f332f' },
+        { legacy: 'COS-177', id: 'PFA-41', key: 'PFA', title: 'Uniformiser les schémas de formulaire « saisie de montant »', color: '#2bb0c4', tint: '#2f332f' },
+        { legacy: 'COS-201', id: '3DE-2', key: '3DE', title: 'Polyhedra from The Symmetries of Things', color: '#f13ec9', tint: '#332e33' },
+        { legacy: 'COS-235', id: '3DE-15', key: '3DE', title: 'de-mock — the engine behind the console', color: '#f13ec9', tint: '#332e33' },
+        { legacy: 'COS-251', id: 'SPI-1', key: 'SPI', title: 'Spira — self-hosted Linear replacement', color: '#3ecf8e', tint: '#3a3d44' },
+        { legacy: 'COS-284', id: 'SPI-24', key: 'SPI', title: 'M3 — Renumbering, legacy identifiers and redirects', color: '#3ecf8e', tint: '#3a3d44' }
+      ],
+      mcpTools: ['list_projects', 'list_issues', 'get_issue', 'create_issue', 'update_issue', 'assign_epic', 'set_relation', 'search'],
+      labelRows: [
+        { name: 'Feature', color: '#9db1c4', count: '31' },
+        { name: 'Improvement', color: '#9db1c4', count: '48' },
+        { name: 'Bug', color: '#c48a83', count: '12' },
+        { name: 'de-mock', color: '#c9a05a', count: '16' },
+        { name: 'design system', color: '#a99fc0', count: '9' },
+        { name: 'Dashboard', color: '#8fae97', count: '7' }
+      ],
+      swatches: [
+        { name: 'chrome', hex: '#1a1b1d' }, { name: 'sidebar', hex: '#202124' }, { name: 'canvas', hex: '#26272a' },
+        { name: 'surface', hex: '#2c2d31' }, { name: 'hover', hex: '#323338' }, { name: 'border', hex: '#3a3b40' }
+      ],
+      statusSwatches: ORDER.map(function (k) { return Object.assign({}, ST[k]); })
+    };
+  }
+}
+</script>
+</body>
+</html>

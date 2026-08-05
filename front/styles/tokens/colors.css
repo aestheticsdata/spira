@@ -1,0 +1,142 @@
+/* ============================================================
+   Spira design tokens — source of truth.
+   Extracted from `design_handoff_spira/spira-v3-neutral.html`
+   ("Spira v3 Neutral", Claude Design). Dark only: there is no
+   light theme, so these live on :root rather than under `.dark`.
+   Every value below appears literally in the design file; do not
+   invent shades, add one here and reference it.
+   ============================================================ */
+
+:root {
+  /* ---- Surfaces (back to front) ------------------------------------ */
+  /* The browser chrome strip in the mock; the app uses it for the topmost bar. */
+  --chrome: #1a1b1d;
+  --sidebar-bg: #202124;
+  /* The main content background — everything sits on this. */
+  --canvas: #26272a;
+  /* Cards, table headers, group headers, secondary buttons. */
+  --surface: #2c2d31;
+  /* Raised: epic rows, cross-reference chips, active filter pills. */
+  --surface-hi: #2f3137;
+  /* Row hover. */
+  --surface-hover: #323338;
+  /* Nav item active, tab hover. */
+  --surface-active: #34363b;
+  /* Popovers, modals, the icon picker. */
+  --overlay: #2a2b2f;
+  /* Inputs and read-only value fields. */
+  --field: #212226;
+  --field-alt: #1b1d21;
+  /* Progress pills. */
+  --pill: #31333a;
+
+  /* ---- Lines ------------------------------------------------------- */
+  --line: #3a3b40;
+  /* Row separators — one step below --line so rows read quieter than cards. */
+  --line-soft: #2f3034;
+  --line-strong: #474a52;
+  --line-overlay: #42434a;
+  /* Dashed capsule around a legacy identifier. */
+  --line-legacy: #484950;
+  --line-hover: #4d4e56;
+  --line-focus: #565a63;
+  --line-chrome: #333438;
+
+  /* ---- Ink (text), strongest to faintest --------------------------- */
+  --ink-1: #fafbfc; /* page titles */
+  --ink-2: #eff0f2; /* row titles, live identifiers */
+  --ink-3: #dcdee1; /* property values */
+  --ink-4: #c6c8cd; /* body copy */
+  --ink-5: #b0b2b8; /* secondary copy */
+  --ink-6: #a2a4aa; /* labels, breadcrumb */
+  --ink-7: #95979d; /* meta, counts */
+  --ink-8: #8a8c92; /* SECTION LABELS */
+  --ink-9: #6a6c73; /* separators, disabled */
+  /* Link / interactive text, and its hover. */
+  --ink-link: #c3c9d4;
+  --ink-link-hover: #dfe3ea;
+  /* The legacy identifier inside its dashed capsule — never as bright as the live one. */
+  --ink-legacy: #9a9ca2;
+
+  /* ---- Accent ------------------------------------------------------ */
+  /* Not a hue: the epic rail, progress fills and the primary button are all
+     neutral. Spira's only chromatic mark is the logo. */
+  --accent: #9aa3b2;
+  --accent-track: #484950;
+  --primary-bg: #464a52;
+  --primary-border: #5f636d;
+  --primary-ink: #f2f4f7;
+  /* The one value here the design file does not carry: its primary button hovers
+     to a blue left over from an earlier palette. This is the neutral equivalent,
+     one step between --primary-bg and --primary-border. */
+  --primary-bg-hover: #4f545e;
+
+  /* Brand — the mark's gradient. Used by the logo and nothing else. */
+  --brand-from: #9ff0cd;
+  --brand-to: #1f9d67;
+  --brand-ink: #cdf7e5;
+  --brand: #3ecf8e;
+
+  /* ---- Workflow state colours -------------------------------------- */
+  /* Paired with a glyph shape in `statusGlyph()` — colour alone never carries
+     the state, because Backlog and Todo share one. */
+  --state-backlog: #a6a8ae;
+  --state-unstarted: #a6a8ae;
+  --state-started: #c9a05a;
+  --state-review: #a99fc0;
+  --state-completed: #9aa3b2;
+  --state-completed-fill: #4a4e57;
+  --state-canceled: #95979d;
+  --state-canceled-fill: #3a3b40;
+
+  /* ---- Glyph strokes ----------------------------------------------- */
+  /* The neutral the design draws its small marks in — priority bars, and the
+     square that means "ordinary issue". Same value as Backlog/Todo, but it is
+     not a state here, so it gets its own name. --glyph-soft is the dimmer
+     variant used when the square sits inside a chip on a raised row. */
+  --glyph: #a6a8ae;
+  --glyph-soft: #8a8d97;
+
+  /* ---- Semantic ---------------------------------------------------- */
+  --warn-bg: #302c28;
+  --warn-line: #544539;
+  --warn-ink: #d8c7a8;
+  --warn-ink-soft: #b3a894;
+  --warn: #c9a05a;
+
+  --ok-bg: #2c332e;
+  --ok-line: #46524a;
+  --ok: #8fae97;
+  --ok-ink: #9fb3a6;
+
+  --danger: #c48a83;
+
+  /* ---- Scrollbar --------------------------------------------------- */
+  --scrollbar-thumb: #4a4b52;
+}
+
+/* ============================================================
+   shadcn/ui semantic tokens, remapped onto the palette above.
+   shadcn primitives are copy-and-own; they read these names.
+   ============================================================ */
+:root {
+  --background: var(--canvas);
+  --foreground: var(--ink-2);
+  --card: var(--surface);
+  --card-foreground: var(--ink-2);
+  --popover: var(--overlay);
+  --popover-foreground: var(--ink-2);
+  --primary: var(--primary-bg);
+  --primary-foreground: var(--primary-ink);
+  --secondary: var(--surface);
+  --secondary-foreground: var(--ink-3);
+  --muted: var(--surface);
+  --muted-foreground: var(--ink-7);
+  --accent-surface: var(--surface-hover);
+  --accent-foreground: var(--ink-1);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--ink-1);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--line-focus);
+}

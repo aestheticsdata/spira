@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Design tokens — by type */
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+
+/* Base layer + component styles */
+@import "./base.css";
+@import "./components/scroll.css";
+
+/* ============================================================
+   Tailwind v4 theme — CSS-first. `inline` because every value
+   below points at a token declared in ./tokens/colors.css.
+   ============================================================ */
+@theme inline {
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Surfaces */
+  --color-chrome: var(--chrome);
+  --color-sidebar: var(--sidebar-bg);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-hi: var(--surface-hi);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-overlay: var(--overlay);
+  --color-field: var(--field);
+  --color-field-alt: var(--field-alt);
+  --color-pill: var(--pill);
+
+  /* Lines */
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-line-overlay: var(--line-overlay);
+  --color-line-legacy: var(--line-legacy);
+  --color-line-hover: var(--line-hover);
+  --color-line-focus: var(--line-focus);
+  --color-line-chrome: var(--line-chrome);
+
+  /* Ink */
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ink-5: var(--ink-5);
+  --color-ink-6: var(--ink-6);
+  --color-ink-7: var(--ink-7);
+  --color-ink-8: var(--ink-8);
+  --color-ink-9: var(--ink-9);
+  --color-ink-link: var(--ink-link);
+  --color-ink-link-hover: var(--ink-link-hover);
+  --color-ink-legacy: var(--ink-legacy);
+
+  /* Accent + brand */
+  --color-accent: var(--accent);
+  --color-accent-track: var(--accent-track);
+  --color-primary-bg: var(--primary-bg);
+  --color-primary-bg-hover: var(--primary-bg-hover);
+  --color-primary-border: var(--primary-border);
+  --color-primary-ink: var(--primary-ink);
+  --color-brand: var(--brand);
+
+  /* Glyph strokes */
+  --color-glyph: var(--glyph);
+  --color-glyph-soft: var(--glyph-soft);
+
+  /* Semantic */
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-line: var(--warn-line);
+  --color-warn-ink: var(--warn-ink);
+  --color-warn-ink-soft: var(--warn-ink-soft);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-line: var(--ok-line);
+  --color-ok-ink: var(--ok-ink);
+  --color-danger: var(--danger);
+
+  /* shadcn names */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Type scale — named by literal size, because the design is pixel-specific. */
+  --text-9: 9.5px;
+  --text-10: 10px;
+  --text-105: 10.5px;
+  --text-11: 11px;
+  --text-115: 11.5px;
+  --text-12: 12px;
+  --text-125: 12.5px;
+  --text-13: 13px;
+  --text-135: 13.5px;
+  --text-14: 14px;
+  --text-15: 15px;
+  --text-16: 16px;
+  --text-20: 20px;
+  --text-22: 22px;
+  --text-25: 25px;
+  --text-27: 27px;
+
+  --tracking-title: -0.02em;
+  --tracking-row: -0.01em;
+  --tracking-section: 0.07em;
+  --tracking-key: 0.05em;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 7px;
+  --radius-xl: 9px;
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
+}

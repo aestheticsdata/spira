@@ -1,0 +1,62 @@
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink-2);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--ink-link);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--ink-link-hover);
+  }
+
+  ::selection {
+    background: #4a4e57;
+  }
+
+  /* Identifiers are always mono, and always tracked slightly wider so
+     `SPI-1` and `SPI-l` cannot be confused at 11.5px. */
+  .identifier {
+    font-family: var(--font-mono);
+    letter-spacing: 0.01em;
+  }
+}
+
+/* Material Symbols Rounded — project icons are stored as ligature names
+   (`graph_3`, `euro`, `deployed_code`). Weight/fill/grade are fixed to the
+   values the design file requests in its font URL. */
+.ms {
+  /* `sans-serif` is a fallback that will never draw a glyph — an unknown
+     ligature name renders as nothing either way. It is here so the declaration
+     always names a generic family. */
+  font-family: "Material Symbols Rounded", sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 20;
+}
