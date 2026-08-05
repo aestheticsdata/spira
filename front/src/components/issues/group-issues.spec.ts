@@ -243,3 +243,110 @@ describe("groupIssues — epic mode", () => {
     expect(groupIssues([], STATES, "epic")).toEqual([]);
   });
 });
+
+const OTHER_PROJECT: ProjectSummaryDto = { id: "p2", key: "PFA", name: "Portfolio", icon: null, color: null };
+
+describe("groupIssues — priority mode", () => {
+  it("orders buckets urgent first and no-priority last, as Linear does", () => {
+    const issues = [
+      makeIssue("a", BACKLOG, { priority: 0 }),
+      makeIssue("b", BACKLOG, { priority: 4 }),
+      makeIssue("c", BACKLOG, { priority: 1 }),
+      makeIssue("d", BACKLOG, { priority: 3 }),
+    ];
+
+    expect(groupIssues(issues, STATES, "priority").map((group) => group.label)).toEqual([
+      "Urgent",
+      "Medium",
+      "Low",
+      "No priority",
+    ]);
+  });
+
+  it("carries the priority rather than borrowing a workflow state's glyph", () => {
+    const [group] = groupIssues([makeIssue("a", BACKLOG, { priority: 1 })], STATES, "priority");
+
+    expect(group.kind).toBe("priority");
+    expect(group.priority).toBe(1);
+    // A priority is not a state; pretending otherwise would colour the header
+    // with a meaning it does not have.
+    expect(group.state).toBeNull();
+  });
+
+  it("drops empty buckets by default and keeps them on request", () => {
+    const issues = [makeIssue("a", BACKLOG, { priority: 1 })];
+
+    expect(groupIssues(issues, STATES, "priority")).toHaveLength(1);
+
+    const all = groupIssues(issues, STATES, "priority", { showEmpty: true });
+    expect(all).toHaveLength(5);
+    expect(all.filter((group) => group.count === 0)).toHaveLength(4);
+  });
+});
+
+describe("groupIssues — project mode", () => {
+  it("buckets by project, alphabetically, carrying the key", () => {
+    const issues = [makeIssue("a", BACKLOG), makeIssue("b", BACKLOG, { project: OTHER_PROJECT })];
+    const groups = groupIssues(issues, STATES, "project");
+
+    expect(groups.map((group) => group.label)).toEqual(["Portfolio", "Spira"]);
+    expect(groups[0].identifier).toBe("PFA");
+    expect(groups[0].kind).toBe("project");
+  });
+
+  it("yields a single group on a one-project list, which is every list today", () => {
+    const groups = groupIssues([makeIssue("a", BACKLOG), makeIssue("b", DONE)], STATES, "project");
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].count).toBe(2);
+  });
+});
+
+describe("groupIssues — no grouping", () => {
+  it("returns one headerless group holding every row in the order given", () => {
+    const issues = [makeIssue("a", DONE), makeIssue("b", BACKLOG)];
+    const [group] = groupIssues(issues, STATES, "none");
+
+    expect(group.kind).toBe("none");
+    expect(group.rows.map((row) => row.id)).toEqual(["a", "b"]);
+  });
+
+  it("returns nothing for an empty list, so the page can offer its creator", () => {
+    expect(groupIssues([], STATES, "none")).toEqual([]);
+  });
+});
+
+describe("groupIssues — showEmpty on status", () => {
+  it("keeps every state when asked", () => {
+    const groups = groupIssues([makeIssue("a", BACKLOG)], STATES, "status", { showEmpty: true });
+
+    expect(groups.map((group) => group.label)).toEqual(["In Progress", "Todo", "Backlog", "Done"]);
+  });
+});
+
+describe("groupIssues — preserveOrder", () => {
+  it("leaves the server's ordering alone instead of floating epics to the top", () => {
+    const issues = [makeIssue("a", BACKLOG), makeIssue("epic", BACKLOG, { isEpic: true })];
+
+    // Default: epics first, which is the manual-order treatment.
+    expect(groupIssues(issues, STATES, "status")[0].rows.map((row) => row.id)).toEqual(["epic", "a"]);
+
+    // Ordered by the server: touching it would undo what was asked for.
+    const ordered = groupIssues(issues, STATES, "status", { preserveOrder: true });
+    expect(ordered[0].rows.map((row) => row.id)).toEqual(["a", "epic"]);
+  });
+
+  it("leaves an epic's children alone too", () => {
+    const issues = [
+      makeIssue("epic", BACKLOG, { isEpic: true }),
+      makeIssue("done", DONE, { epicId: "epic" }),
+      makeIssue("todo", TODO, { epicId: "epic" }),
+    ];
+
+    expect(groupIssues(issues, STATES, "epic")[0].rows.map((row) => row.id)).toEqual(["todo", "done"]);
+    expect(groupIssues(issues, STATES, "epic", { preserveOrder: true })[0].rows.map((row) => row.id)).toEqual([
+      "done",
+      "todo",
+    ]);
+  });
+});

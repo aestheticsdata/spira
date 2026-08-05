@@ -1,3 +1,4 @@
+import { showsColumn } from "@components/filters/display-options";
 import { ROUTES } from "@components/shared/config/constants";
 import { EpicGlyph } from "@components/ui/epic-glyph";
 import { Identifier } from "@components/ui/identifier";
@@ -9,28 +10,29 @@ import { cn } from "@lib/utils";
 import { format } from "date-fns";
 import Link from "next/link";
 
-import type { GroupMode } from "@components/issues/group-issues";
+import type { DisplayOptions } from "@components/filters/display-options";
 import type { IssueListItemDto } from "@lib/api-types";
 
 /**
  * One line of the issues list. An epic gets three signals at once — a taller
  * raised row, an accent rail and a heavier title — so it is never mistaken for
  * an ordinary issue sitting in the same status group.
+ *
+ * Which columns it carries is a display setting (COS-274). The title is not one
+ * of them: a row without it would be a row you cannot read.
  */
 export function IssueRow({
   issue,
   indent,
-  showLegacy,
-  mode,
+  display,
 }: {
   issue: IssueListItemDto;
   indent: number;
-  showLegacy: boolean;
-  mode: GroupMode;
+  display: DisplayOptions;
 }) {
   // Grouped by epic, the group header already says which epic this is; the chip
   // would only repeat it.
-  const parent = mode === "status" ? issue.epic : null;
+  const parent = display.group === "epic" ? null : issue.epic;
 
   return (
     <Link
@@ -45,17 +47,21 @@ export function IssueRow({
         boxShadow: issue.isEpic ? "inset 2px 0 0 var(--accent)" : undefined,
       }}
     >
-      <StateIcon
-        state={issue.state}
-        size={12}
-      />
-      <Identifier
-        identifier={issue.identifier}
-        legacy={showLegacy ? issue.legacyIdentifier : null}
-        variant="row"
-        emphasised={issue.isEpic}
-        className="w-[138px] flex-none"
-      />
+      {showsColumn(display, "status") && (
+        <StateIcon
+          state={issue.state}
+          size={12}
+        />
+      )}
+      {showsColumn(display, "identifier") && (
+        <Identifier
+          identifier={issue.identifier}
+          legacy={display.legacy ? issue.legacyIdentifier : null}
+          variant="row"
+          emphasised={issue.isEpic}
+          className="w-[138px] flex-none"
+        />
+      )}
       {issue.isEpic && <EpicGlyph size={13} />}
       <span
         className={cn(
@@ -77,16 +83,43 @@ export function IssueRow({
           <span className="truncate text-11 text-ink-5">{parent.title}</span>
         </span>
       )}
-      {issue.labels.map((label) => (
-        <LabelChip
-          key={label.id}
-          label={label}
+      {showsColumn(display, "labels") &&
+        issue.labels.map((label) => (
+          <LabelChip
+            key={label.id}
+            label={label}
+          />
+        ))}
+      {showsColumn(display, "priority") && <PriorityBars priority={issue.priority} />}
+      {showsColumn(display, "created") && (
+        <IssueDate
+          iso={issue.createdAt}
+          label="Created"
         />
-      ))}
-      <PriorityBars priority={issue.priority} />
-      <span className="identifier w-11 flex-none text-right text-105 text-ink-7">
-        {format(new Date(issue.updatedAt), "MMM d")}
-      </span>
+      )}
+      {showsColumn(display, "updated") && (
+        <IssueDate
+          iso={issue.updatedAt}
+          label="Updated"
+        />
+      )}
     </Link>
+  );
+}
+
+/**
+ * With both dates on, two bare `Aug 5`s sit side by side with nothing to tell
+ * them apart, so each carries its meaning in the title and the accessible name.
+ */
+function IssueDate({ iso, label }: { iso: string; label: string }) {
+  const shown = format(new Date(iso), "MMM d");
+
+  return (
+    <span
+      title={`${label} ${shown}`}
+      className="identifier w-11 flex-none text-right text-105 text-ink-7"
+    >
+      {shown}
+    </span>
   );
 }

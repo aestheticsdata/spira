@@ -1,6 +1,7 @@
 "use client";
 
 import { Identifier } from "@components/ui/identifier";
+import { PriorityBars } from "@components/ui/priority-bars";
 import { ProgressPill } from "@components/ui/progress-pill";
 import { StateIcon } from "@components/ui/state-icon";
 import { cn } from "@lib/utils";
@@ -21,13 +22,14 @@ export function IssueGroup({
   count,
   accent,
   state,
+  priority,
   iconRadius,
   progress,
   quickAdd,
   children,
 }: Pick<
   IssueGroupData,
-  "kind" | "label" | "identifier" | "legacy" | "count" | "accent" | "state" | "iconRadius" | "progress"
+  "kind" | "label" | "identifier" | "legacy" | "count" | "accent" | "state" | "priority" | "iconRadius" | "progress"
 > & {
   children: React.ReactNode;
   /** The group's own creator, hidden with the rows when the group collapses. */
@@ -35,6 +37,17 @@ export function IssueGroup({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const isEpic = kind === "epic";
+
+  // Ungrouped: there is one of these holding everything, so a header saying so
+  // would be a bar that never changes and a collapse that hides the whole list.
+  if (kind === "none") {
+    return (
+      <section>
+        {children}
+        {quickAdd}
+      </section>
+    );
+  }
 
   return (
     <section
@@ -50,11 +63,21 @@ export function IssueGroup({
           isEpic ? "bg-surface-hi" : "bg-surface",
         )}
       >
-        <StateIcon
-          state={state}
-          size={12}
-          radius={iconRadius}
-        />
+        {/* A state ring where a state says it, the priority bars where a
+            priority does, and nothing at all for a project — rather than
+            borrowing one vocabulary's glyph to say something from another. */}
+        {state && (
+          <StateIcon
+            state={state}
+            size={12}
+            radius={iconRadius}
+          />
+        )}
+        {state === null && priority !== null && (
+          <span aria-hidden="true">
+            <PriorityBars priority={priority} />
+          </span>
+        )}
         {identifier && (
           <Identifier
             identifier={identifier}
