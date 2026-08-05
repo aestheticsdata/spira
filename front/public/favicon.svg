@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs><linearGradient id="arcG" gradientUnits="userSpaceOnUse" x1="6.50" y1="6.50" x2="25.50" y2="25.50"><stop offset="0" stop-color="#9ff0cd"></stop><stop offset="1" stop-color="#1f9d67"></stop></linearGradient></defs>
+  <path d="M8.55 20.42 A9.10 9.10 0 1 1 23.45 20.42" fill="none" stroke="url(#arcG)" stroke-width="3.30" stroke-linecap="round"></path>
+  <path d="M15.50 14.44 Q16.00 13.40 16.50 14.44 L20.10 21.86 Q20.60 22.90 19.61 22.32 L16.99 20.78 Q16.00 20.20 15.01 20.78 L12.39 22.32 Q11.40 22.90 11.90 21.86 Z" fill="#cdf7e5"></path>
+</svg>

@@ -1,0 +1,11 @@
+allowBuilds:
+  "@biomejs/biome": true
+  "@tailwindcss/oxide": true
+  sharp: true
+  unrs-resolver: true
+
+# vite 8.2.0 depends on lightningcss ^1.33.0, which is not published (latest is
+# 1.32.0), so a fresh install of vitest 4 cannot resolve. Pinned to the last
+# good release — the same version pfa's lockfile settled on.
+overrides:
+  vite: 8.1.4

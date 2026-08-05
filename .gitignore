@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+build/
+generated/
+
+# env
+.env
+.env*.local
+.env.production
+!.env.example
+
+# tests
+coverage/
+test-results/
+playwright-report/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# runtime
+dump.rdb
+
+# editors / os
+.DS_Store
+*.swp
+.idea/
+front/tsconfig.tsbuildinfo
+front/next-env.d.ts
+*.tsbuildinfo
+# Playwright's saved storageState holds a live session cookie. The leading **/
+# matters: a pattern with an inner slash is anchored to this file's directory,
+# so a bare `e2e/.auth/` would only match /e2e, never front/e2e.
+**/e2e/.auth/
+**/test-results/
+**/playwright-report/

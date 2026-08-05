@@ -1,0 +1,194 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// Exactly one row. Seeded by `pnpm seed` — there is no signup UI.
+///
+/// Identified by a username rather than an email: nothing here sends mail, and
+/// the design's settings screen shows a bare name. One column, and a login the
+/// owner can actually type.
+model User {
+  id           String   @id @db.Char(36)
+  username     String   @unique @db.VarChar(60)
+  passwordHash String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+}
+
+model Project {
+  id      String  @id @db.Char(36)
+  /// "PFA", "3DE", "SPI" — drives every identifier in the project.
+  key     String  @unique @db.VarChar(5)
+  name    String  @db.VarChar(120)
+  /// Material Symbols Rounded ligature name, or a single emoji character.
+  icon    String? @db.VarChar(40)
+  color   String? @db.VarChar(9)
+  summary String? @db.VarChar(255)
+  /// markdown
+  description String? @db.Text
+
+  statusId String @db.Char(36)
+  priority Int    @default(0)
+
+  startDate  DateTime?
+  targetDate DateTime?
+
+  /// Last allocated issue number. Incremented inside the create transaction.
+  issueCounter Int       @default(0)
+  position     Int       @default(0)
+  archivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  status WorkflowState @relation(fields: [statusId], references: [id])
+  issues Issue[]
+  views  SavedView[]
+
+  @@index([statusId])
+}
+
+/// Global state set, shared by every project. Per-project states are a YAGNI cut.
+model WorkflowState {
+  id       String @id @db.Char(36)
+  name     String @db.VarChar(40)
+  /// backlog | unstarted | started | completed | canceled
+  type     String @db.VarChar(12)
+  color    String @db.VarChar(9)
+  position Int
+
+  issues   Issue[]
+  projects Project[]
+}
+
+model Label {
+  id     String       @id @db.Char(36)
+  name   String       @unique @db.VarChar(60)
+  color  String       @db.VarChar(9)
+  issues IssueLabel[]
+}
+
+model Issue {
+  id        String @id @db.Char(36)
+  projectId String @db.Char(36)
+  number    Int
+
+  /// "PFA-12" — stored, not derived, so a project re-key never moves it.
+  identifier       String  @unique @db.VarChar(20)
+  /// "COS-177" — the Linear identifier this issue carried before the migration.
+  legacyIdentifier String? @unique @db.VarChar(20)
+
+  title       String  @db.VarChar(255)
+  /// markdown
+  description String? @db.Text
+
+  stateId  String @db.Char(36)
+  /// 0 none, 1 urgent, 2 high, 3 medium, 4 low — Linear's order.
+  priority Int    @default(0)
+
+  /// An epic is an ordinary issue with this flag. The hierarchy is exactly one level deep.
+  isEpic Boolean @default(false)
+  epicId String? @db.Char(36)
+
+  sortOrder Float
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  canceledAt  DateTime?
+  archivedAt  DateTime?
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  state   WorkflowState @relation(fields: [stateId], references: [id])
+  epic    Issue?        @relation("EpicChildren", fields: [epicId], references: [id], onDelete: SetNull)
+  children Issue[]      @relation("EpicChildren")
+
+  labels        IssueLabel[]
+  relationsFrom IssueRelation[] @relation("RelationFrom")
+  relationsTo   IssueRelation[] @relation("RelationTo")
+  comments      Comment[]
+
+  @@unique([projectId, number])
+  @@index([stateId])
+  @@index([epicId])
+  @@index([projectId, sortOrder])
+}
+
+model IssueLabel {
+  issueId String @db.Char(36)
+  labelId String @db.Char(36)
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, labelId])
+  @@index([labelId])
+}
+
+/// A block is stored once, as `{from: A, to: B, type: 'blocks'}`, read as "A blocks B".
+/// "Blocked by" is the same row read the other way, so the two views cannot disagree.
+/// `related` is symmetric and normalised on write (lower id first).
+model IssueRelation {
+  id          String @id @db.Char(36)
+  fromIssueId String @db.Char(36)
+  toIssueId   String @db.Char(36)
+  /// blocks | related
+  type        String @db.VarChar(12)
+
+  fromIssue Issue @relation("RelationFrom", fields: [fromIssueId], references: [id], onDelete: Cascade)
+  toIssue   Issue @relation("RelationTo", fields: [toIssueId], references: [id], onDelete: Cascade)
+
+  @@unique([fromIssueId, toIssueId, type])
+  @@index([toIssueId])
+}
+
+model SavedView {
+  id        String  @id @db.Char(36)
+  name      String  @db.VarChar(80)
+  icon      String? @db.VarChar(40)
+  /// null = workspace-wide
+  projectId String? @db.Char(36)
+  /// serialised filter set
+  filters   Json
+  groupBy   String  @db.VarChar(20)
+  orderBy   String  @db.VarChar(20)
+  position  Int
+
+  createdAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ApiToken {
+  id         String    @id @db.Char(36)
+  name       String    @db.VarChar(80)
+  tokenHash  String    @unique @db.VarChar(255)
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+/// Read by nothing in v1. Populated only if the optional connector side-file is
+/// taken at cutover — it exists so that decision stays available then, rather
+/// than being a schema change against a workspace that no longer exists.
+model Comment {
+  id         String   @id @db.Char(36)
+  issueId    String   @db.Char(36)
+  parentId   String?  @db.Char(36)
+  /// markdown
+  body       String   @db.Text
+  authorName String   @db.VarChar(80)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+}
