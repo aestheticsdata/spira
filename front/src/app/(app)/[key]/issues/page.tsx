@@ -1,3 +1,4 @@
+import { applyDisplayToApiQuery, DEFAULT_DISPLAY, parseDisplayOptions } from "@components/filters/display-options";
 import { FilterChips } from "@components/filters/filter-controls";
 import { hasActiveFilters, issueFiltersToApiQuery, parseIssueFilters } from "@components/filters/issue-filters";
 import { groupIssues } from "@components/issues/group-issues";
@@ -10,13 +11,9 @@ import { ProjectTabs } from "@components/shell/project-tabs";
 import { serverFetch, serverFetchOptional } from "@lib/server-api";
 import { notFound } from "next/navigation";
 
-import type { GroupMode } from "@components/issues/group-issues";
 import type { IssueListItemDto, LabelDto, ProjectDto, WorkflowStateDto } from "@lib/api-types";
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-const first = (value: string | string[] | undefined): string | null =>
-  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 export default async function ProjectIssuesPage({
   params,
@@ -28,19 +25,17 @@ export default async function ProjectIssuesPage({
   const [{ key }, query] = await Promise.all([params, searchParams]);
   const projectKey = key.toUpperCase();
 
-  // The mirror image of the toolbar's nuqs parsers. `clearOnDefault` keeps a
-  // default out of the URL, so an absent key means the default, not "unset".
-  const mode: GroupMode = first(query.group) === "epic" ? "epic" : "status";
-  const showLegacy = first(query.legacy) !== "false";
-
-  // The same parser the bar writes with, so the list the server builds and the
-  // chips the client draws can never describe different filters.
+  // The same parsers the toolbar writes with, so the list the server builds and
+  // the controls the client draws can never describe different things.
   const filters = parseIssueFilters(query);
+  const display = parseDisplayOptions(query);
   const filtered = hasActiveFilters(filters);
+
+  const issuesQuery = applyDisplayToApiQuery(issueFiltersToApiQuery(filters, projectKey), display);
 
   const [project, issues, states, labels, epics] = await Promise.all([
     serverFetchOptional<ProjectDto>(`/projects/${projectKey}`),
-    serverFetch<IssueListItemDto[]>(`/issues?${issueFiltersToApiQuery(filters, projectKey)}`),
+    serverFetch<IssueListItemDto[]>(`/issues?${issuesQuery}`),
     serverFetch<WorkflowStateDto[]>("/states"),
     // The chips and the menu need every label's name and colour, and a list
     // filtered down to nothing cannot supply either — so these three come
@@ -53,7 +48,11 @@ export default async function ProjectIssuesPage({
     notFound();
   }
 
-  const groups = groupIssues(issues, states, mode);
+  const groups = groupIssues(issues, states, display.group, {
+    showEmpty: display.emptyGroups,
+    // The server sorted these; re-sorting here would undo what was asked for.
+    preserveOrder: display.order !== DEFAULT_DISPLAY.order,
+  });
 
   return (
     <>
@@ -82,10 +81,11 @@ export default async function ProjectIssuesPage({
             kind={group.kind}
             label={group.label}
             identifier={group.identifier}
-            legacy={showLegacy ? group.legacy : null}
+            legacy={display.legacy ? group.legacy : null}
             count={group.count}
             accent={group.accent}
             state={group.state}
+            priority={group.priority}
             iconRadius={group.iconRadius}
             progress={group.progress}
             quickAdd={
@@ -103,8 +103,7 @@ export default async function ProjectIssuesPage({
                 key={issue.id}
                 issue={issue}
                 indent={group.indent}
-                showLegacy={showLegacy}
-                mode={mode}
+                display={display}
               />
             ))}
           </IssueGroup>

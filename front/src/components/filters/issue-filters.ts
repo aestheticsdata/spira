@@ -13,7 +13,10 @@
  * distinguish the two.
  */
 
+import { list, raw } from "@components/filters/query-params";
 import { PRIORITY_NAMES } from "@lib/status";
+
+import type { RawParams } from "@components/filters/query-params";
 
 /** Derived rather than restated: `@lib/status` already owns the priority scale. */
 export const MAX_PRIORITY = PRIORITY_NAMES.length - 1;
@@ -43,43 +46,6 @@ export const EMPTY_FILTERS: IssueFilters = {
   excludeLabels: [],
   epic: null,
 };
-
-type RawParams = URLSearchParams | Record<string, string | string[] | undefined>;
-
-function raw(params: RawParams, key: string): string | null {
-  if (params instanceof URLSearchParams) {
-    // Repeated params are accepted as well as comma-joined ones, because the
-    // API accepts both and a hand-edited URL should not be the odd one out.
-    const all = params.getAll(key);
-    return all.length > 0 ? all.join(",") : null;
-  }
-
-  const value = params[key];
-  if (Array.isArray(value)) {
-    return value.length > 0 ? value.join(",") : null;
-  }
-
-  return value ?? null;
-}
-
-function list(params: RawParams, key: string): string[] {
-  const value = raw(params, key);
-  if (value === null) {
-    return [];
-  }
-
-  // Sorted, so that picking the same three labels in a different order gives
-  // the same link — which is what lets COS-265 tell two saved views apart by
-  // their query alone.
-  return [
-    ...new Set(
-      value
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0),
-    ),
-  ].sort();
-}
 
 function intList(params: RawParams, key: string, max: number): number[] {
   const entries = list(params, key)

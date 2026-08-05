@@ -1,7 +1,7 @@
 "use client";
 
 import { countActiveFilters, EMPTY_FILTERS, labelMode, setLabelMode, toggle } from "@components/filters/issue-filters";
-import { useIssueFilters } from "@components/filters/use-issue-filters";
+import { useListView } from "@components/filters/use-list-view";
 import { Button } from "@components/ui/button";
 import { EpicGlyph } from "@components/ui/epic-glyph";
 import { PriorityBars } from "@components/ui/priority-bars";
@@ -52,7 +52,7 @@ function Tick({ on }: { on: boolean }) {
 /* ------------------------------------------------------------------ button */
 
 export function FilterButton(sources: FilterSources) {
-  const [filters, setFilters] = useIssueFilters();
+  const { filters, setFilters } = useListView();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
   const active = countActiveFilters(filters);
@@ -408,7 +408,7 @@ function epicChip(epic: EpicFilter, epics: IssueListItemDto[]): { operator: stri
 }
 
 export function FilterChips({ states, labels, epics }: FilterSources) {
-  const [filters, setFilters] = useIssueFilters();
+  const { filters, setFilters } = useListView();
 
   if (countActiveFilters(filters) === 0) {
     return null;
