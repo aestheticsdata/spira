@@ -3,12 +3,15 @@ import { ROUTES } from "@components/shared/config/constants";
 import { SearchTrigger } from "@components/shell/search-trigger";
 import { SidebarLink } from "@components/shell/sidebar-link";
 import { ProjectIcon } from "@components/ui/project-icon";
+import { splitViews } from "@components/views/saved-views.util";
 import Image from "next/image";
 import Link from "next/link";
 
-import type { ProjectListItemDto } from "@lib/api-types";
+import type { ProjectListItemDto, SavedViewDto } from "@lib/api-types";
 
-export function Sidebar({ projects }: { projects: ProjectListItemDto[] }) {
+export function Sidebar({ projects, views }: { projects: ProjectListItemDto[]; views: SavedViewDto[] }) {
+  const { workspace, project } = splitViews(views);
+
   return (
     <nav className="flex w-[236px] flex-none flex-col border-r border-line-chrome bg-sidebar px-2 py-2.5">
       <div className="flex items-center gap-[9px] px-1.5 pt-[5px] pb-3">
@@ -36,11 +39,39 @@ export function Sidebar({ projects }: { projects: ProjectListItemDto[] }) {
         icon={<span className="size-3 rounded-[3px] border-[1.5px] border-current opacity-75" />}
       />
       <SidebarLink
-        href="/views"
+        href={ROUTES.views.path}
         label="Saved views"
         className="h-[29px]"
         icon={<span className="size-3 border-t-[1.5px] border-b-[1.5px] border-current opacity-75" />}
       />
+
+      {/* Workspace views first, then the project ones, which is the split the
+          ticket asks for and the order the API already returns. A project view
+          carries its key the way a project row does, so the two halves are told
+          apart by what is on the row rather than by a second heading. */}
+      {views.length > 0 && (
+        <div className="sp-scroll mt-px flex max-h-[168px] flex-col gap-px overflow-y-auto pl-[13px]">
+          {[...workspace, ...project].map((view) => (
+            <SidebarLink
+              key={view.id}
+              href={ROUTES.view.path(view.id)}
+              label={view.name}
+              matchParam={{ key: "view", value: view.id }}
+              className="h-[26px] text-125"
+              icon={
+                <ProjectIcon
+                  project={{ icon: view.icon ?? "filter_list", color: null, name: view.name }}
+                  size={13}
+                  glyph={13}
+                />
+              }
+              trailing={
+                view.project && <span className="identifier text-9 tracking-key text-ink-8">{view.project.key}</span>
+              }
+            />
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between px-2 pt-[18px] pb-1.5">
         <div className="text-105 font-semibold tracking-section text-ink-8">PROJECTS</div>

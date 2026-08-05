@@ -12,6 +12,9 @@ export const ROUTES = {
   projectOverview: { path: (key: string) => `/${key.toLowerCase()}/overview` },
   projectEdit: { path: (key: string) => `/${key.toLowerCase()}/edit` },
   issue: { path: (identifier: string) => `/issue/${identifier.toUpperCase()}` },
+  views: { path: "/views" },
+  /** Where a saved view is opened from — see the route for what it does next. */
+  view: { path: (id: string) => `/views/${id}` },
   settings: { path: "/settings" },
 } as const;
 
@@ -20,4 +23,4 @@ export const ROUTES = {
  * which is what actually rejects them. This copy only exists so the form can
  * say why before the request leaves the browser.
  */
-export const RESERVED_PROJECT_KEYS = ["ISSUE", "LOGIN", "API", "NEW"] as const;
+export const RESERVED_PROJECT_KEYS = ["ISSUE", "LOGIN", "API", "NEW", "VIEWS"] as const;

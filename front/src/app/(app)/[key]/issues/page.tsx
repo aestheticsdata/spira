@@ -11,7 +11,7 @@ import { ProjectTabs } from "@components/shell/project-tabs";
 import { serverFetch, serverFetchOptional } from "@lib/server-api";
 import { notFound } from "next/navigation";
 
-import type { IssueListItemDto, LabelDto, ProjectDto, WorkflowStateDto } from "@lib/api-types";
+import type { IssueListItemDto, LabelDto, ProjectDto, SavedViewDto, WorkflowStateDto } from "@lib/api-types";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -33,7 +33,7 @@ export default async function ProjectIssuesPage({
 
   const issuesQuery = applyDisplayToApiQuery(issueFiltersToApiQuery(filters, projectKey), display);
 
-  const [project, issues, states, labels, epics] = await Promise.all([
+  const [project, issues, states, labels, epics, views] = await Promise.all([
     serverFetchOptional<ProjectDto>(`/projects/${projectKey}`),
     serverFetch<IssueListItemDto[]>(`/issues?${issuesQuery}`),
     serverFetch<WorkflowStateDto[]>("/states"),
@@ -42,6 +42,9 @@ export default async function ProjectIssuesPage({
     // unfiltered, alongside the filtered one rather than out of it.
     serverFetch<LabelDto[]>("/labels"),
     serverFetch<IssueListItemDto[]>(`/issues?project=${projectKey}&isEpic=true`),
+    // Both scopes: a workspace view can be open on a project's list too, and
+    // the bar has to be able to name whichever one it was opened from.
+    serverFetch<SavedViewDto[]>(`/views?project=${projectKey}`),
   ]);
 
   if (!project) {
@@ -72,6 +75,8 @@ export default async function ProjectIssuesPage({
         states={states}
         labels={labels}
         epics={epics}
+        views={views}
+        projectKey={project.key}
       />
 
       <div className="sp-scroll min-h-0 flex-1 overflow-y-auto">

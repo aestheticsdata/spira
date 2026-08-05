@@ -2,12 +2,18 @@
 
 import { cn } from "@lib/utils";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 /**
- * A sidebar row. `matchPrefix` exists for project rows: the project stays
- * highlighted across its Issues and Overview tabs, and while one of its issues
- * is open, rather than only on the exact href.
+ * A sidebar row.
+ *
+ * `matchPrefix` exists for project rows: the project stays highlighted across
+ * its Issues and Overview tabs, and while one of its issues is open, rather
+ * than only on the exact href.
+ *
+ * `matchParam` exists for saved views, which live in the query rather than in
+ * the path: a project view is opened by pushing its query onto that project's
+ * list, so the path says `/spi/issues` and only `?view=` says which view.
  */
 export function SidebarLink({
   href,
@@ -15,6 +21,7 @@ export function SidebarLink({
   icon,
   trailing,
   matchPrefix,
+  matchParam,
   className,
 }: {
   href: string;
@@ -22,10 +29,17 @@ export function SidebarLink({
   icon?: React.ReactNode;
   trailing?: React.ReactNode;
   matchPrefix?: string;
+  matchParam?: { key: string; value: string };
   className?: string;
 }) {
   const pathname = usePathname();
-  const active = matchPrefix ? pathname.startsWith(matchPrefix) : pathname.replace(/\/$/, "") === href;
+  const searchParams = useSearchParams();
+
+  const active = matchParam
+    ? searchParams.get(matchParam.key) === matchParam.value
+    : matchPrefix
+      ? pathname.startsWith(matchPrefix)
+      : pathname.replace(/\/$/, "") === href;
 
   return (
     <Link

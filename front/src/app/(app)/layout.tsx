@@ -3,7 +3,7 @@ import { Sidebar } from "@components/shell/sidebar";
 import { isApiError, serverFetch } from "@lib/server-api";
 import { redirect } from "next/navigation";
 
-import type { AuthenticatedUserDto, ProjectListItemDto } from "@lib/api-types";
+import type { AuthenticatedUserDto, ProjectListItemDto, SavedViewDto } from "@lib/api-types";
 
 /**
  * The authenticated shell. `/users/me` is the real authorisation check for the
@@ -14,11 +14,13 @@ import type { AuthenticatedUserDto, ProjectListItemDto } from "@lib/api-types";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let user: AuthenticatedUserDto;
   let projects: ProjectListItemDto[];
+  let views: SavedViewDto[];
 
   try {
-    [user, projects] = await Promise.all([
+    [user, projects, views] = await Promise.all([
       serverFetch<AuthenticatedUserDto>("/users/me"),
       serverFetch<ProjectListItemDto[]>("/projects"),
+      serverFetch<SavedViewDto[]>("/views"),
     ]);
   } catch (error) {
     // Only a refused session is a reason to show the login screen. An API that
@@ -33,7 +35,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <Providers initialUser={user}>
       <div className="flex h-screen min-h-0">
-        <Sidebar projects={projects} />
+        <Sidebar
+          projects={projects}
+          views={views}
+        />
         <main className="flex min-w-0 flex-1 flex-col bg-canvas">{children}</main>
       </div>
     </Providers>

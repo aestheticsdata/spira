@@ -129,15 +129,24 @@ export function issueFiltersToParams(filters: IssueFilters): URLSearchParams {
 }
 
 /**
- * The API query for a project's list: the filter params plus the project.
+ * The API query for a list: the filter params, plus the project when there is
+ * one.
  *
  * Identical to {@link issueFiltersToParams} except for the project, which is
  * the route rather than a filter — that sameness is the point, and the reason
  * this returns params rather than a bespoke request object.
+ *
+ * Without a key the query spans every project, which is what a workspace-level
+ * saved view (COS-278) asks for: it has no project to be scoped to, so leaving
+ * the param off is not an omission but the whole of what it means.
  */
-export function issueFiltersToApiQuery(filters: IssueFilters, projectKey: string): URLSearchParams {
+export function issueFiltersToApiQuery(filters: IssueFilters, projectKey?: string): URLSearchParams {
   const params = issueFiltersToParams(filters);
-  params.set("project", projectKey);
+
+  if (projectKey) {
+    params.set("project", projectKey);
+  }
+
   return params;
 }
 
