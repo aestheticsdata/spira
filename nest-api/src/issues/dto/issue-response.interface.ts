@@ -60,6 +60,10 @@ export interface IssueListItemDto {
   project: ProjectSummaryDto;
   /** Only for epics: children completed / children total. */
   epicProgress: EpicProgressDto | null;
+  /** How many issues block this one — the row badge that says "stuck". */
+  blockedByCount: number;
+  /** How many issues this one blocks — shown lighter, it is not a warning about this issue. */
+  blocksCount: number;
   sortOrder: number;
   /** Non-null once archived. Lists leave archived issues out by default, so on
    *  a list row this is always null; the detail route returns them either way,

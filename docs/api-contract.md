@@ -54,6 +54,7 @@ interface ProjectListItemDto extends ProjectSummaryDto {
   /** How many of this project's issues carry a legacyIdentifier. */
   legacyCount: number;
   archivedAt: string | null;
+  createdAt: string;
 }
 
 interface ProjectDto extends ProjectListItemDto {
@@ -61,7 +62,6 @@ interface ProjectDto extends ProjectListItemDto {
   startDate: string | null;
   targetDate: string | null;
   issueCounter: number;
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -88,6 +88,10 @@ interface IssueListItemDto {
   project: ProjectSummaryDto;
   /** Only for epics: children completed / children total. */
   epicProgress: { done: number; total: number } | null;
+  /** How many issues block this one — the row badge that says "stuck". */
+  blockedByCount: number;
+  /** How many issues this one blocks — shown lighter, it is not a warning about this issue. */
+  blocksCount: number;
   sortOrder: number;
   /** Non-null once archived. Always null on a list row, since lists exclude
    *  archived issues by default; the detail route returns them either way. */

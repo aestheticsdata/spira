@@ -1,36 +1,39 @@
 import type { StateType, WorkflowStateDto } from "@lib/api-types";
 
 /**
- * How a workflow state is drawn: a 12px ring whose border style, fill and inner
- * dot size together carry the state. Colour alone cannot — Backlog and Todo
- * share `#a6a8ae` and are told apart only by dashed vs solid.
- *
- * Values are lifted from the `ST` table in the design file.
+ * How a workflow state is drawn. Backlog and Todo are rings, dashed vs solid —
+ * colour alone cannot tell them apart, since they share `#a6a8ae`. The started
+ * states are a pie, filled toward the state's own colour as work gets closer
+ * to done. Done and Canceled are not a ring at all: a filled disc with a check
+ * or a cross, matching Linear's own icons rather than the design file's plain
+ * dot.
  */
+export type StateGlyphKind = "ring" | "pie" | "check" | "cross";
+
 export interface StateGlyph {
-  /** Ring border style. */
+  kind: StateGlyphKind;
+  /** Ring border style; only meaningful for "ring". */
   border: "solid" | "dashed";
-  /** Ring fill, behind the dot. */
-  fill: string;
-  /** Inner dot diameter in px; 0 means no dot. */
-  dot: number;
+  /** Pie fill fraction, 0–1; only meaningful for "pie". */
+  fraction: number;
 }
 
 /**
- * The two `started` states differ in the design — In Progress is a 6px amber
- * dot, In Review a 4px lilac one — so `type` alone cannot pick the glyph. The
- * seeded state names disambiguate them; anything unseeded falls back to `type`.
+ * The two `started` states differ — In Progress reads as roughly half done, In
+ * Review as most of the way there — so `type` alone cannot pick the fraction.
+ * The seeded state names disambiguate them; anything unseeded falls back to
+ * the `started` type's own default.
  */
 const GLYPH_BY_NAME: Record<string, Partial<StateGlyph>> = {
-  "in review": { dot: 4 },
+  "in review": { fraction: 0.85 },
 };
 
 const GLYPH_BY_TYPE: Record<StateType, StateGlyph> = {
-  backlog: { border: "dashed", fill: "transparent", dot: 0 },
-  unstarted: { border: "solid", fill: "transparent", dot: 0 },
-  started: { border: "solid", fill: "transparent", dot: 6 },
-  completed: { border: "solid", fill: "var(--state-completed-fill)", dot: 5 },
-  canceled: { border: "solid", fill: "var(--state-canceled-fill)", dot: 5 },
+  backlog: { kind: "ring", border: "dashed", fraction: 0 },
+  unstarted: { kind: "ring", border: "solid", fraction: 0 },
+  started: { kind: "pie", border: "solid", fraction: 0.5 },
+  completed: { kind: "check", border: "solid", fraction: 1 },
+  canceled: { kind: "cross", border: "solid", fraction: 1 },
 };
 
 export function stateGlyph(state: Pick<WorkflowStateDto, "name" | "type">): StateGlyph {

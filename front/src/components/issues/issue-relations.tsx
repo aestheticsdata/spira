@@ -2,6 +2,7 @@
 
 import { linkedIdentifiers, RELATION_KINDS, relationTargets } from "@components/issues/relations.util";
 import { ROUTES } from "@components/shared/config/constants";
+import { BlockedGlyph, BlocksGlyph } from "@components/ui/relation-glyphs";
 import { StateIcon } from "@components/ui/state-icon";
 import useRequestHelper from "@helpers/useRequestHelper";
 import { cn } from "@lib/utils";
@@ -66,10 +67,23 @@ export function IssueRelations({ issue }: { issue: IssueDetailDto }) {
       "The relation could not be added.",
     );
 
+  // Same icon language as the list row's badge: both directions read as coral
+  // in the real app, not one red and one neutral. Related carries no
+  // direction, so it gets neither.
   const sections = [
-    { kind: "blocked_by" as const, label: "Blocked by", issues: issue.relations.blockedBy },
-    { kind: "blocks" as const, label: "Blocks", issues: issue.relations.blocks },
-    { kind: "related" as const, label: "Related", issues: issue.relations.related },
+    {
+      kind: "blocked_by" as const,
+      label: "Blocked by",
+      issues: issue.relations.blockedBy,
+      icon: <BlockedGlyph size={12} />,
+    },
+    {
+      kind: "blocks" as const,
+      label: "Blocks",
+      issues: issue.relations.blocks,
+      icon: <BlocksGlyph size={12} />,
+    },
+    { kind: "related" as const, label: "Related", issues: issue.relations.related, icon: null },
   ];
 
   const empty = sections.every((section) => section.issues.length === 0);
@@ -91,7 +105,10 @@ export function IssueRelations({ issue }: { issue: IssueDetailDto }) {
             key={section.kind}
             className="mb-3"
           >
-            <div className="mb-1.5 text-11 text-ink-7">{section.label}</div>
+            <div className="mb-1.5 flex items-center gap-1.5 text-11 text-ink-7">
+              {section.icon}
+              {section.label}
+            </div>
             <div className="flex flex-col gap-1.5">
               {section.issues.map((related) => (
                 <div

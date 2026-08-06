@@ -556,8 +556,16 @@ export class IssuesService {
       (relation.type === "blocks" ? blockedBy : related).push(ref);
     }
 
+    // The relation graph is already in hand from `relationsFrom`/`relationsTo`
+    // above — a single-issue fetch has no reason to re-run `relationCounts`'s
+    // groupBy just to recompute the same two numbers.
+    const relationCounts = {
+      blocks: new Map([[issue.id, blocks.length]]),
+      blockedBy: new Map([[issue.id, blockedBy.length]]),
+    };
+
     return {
-      ...this.toListItem(issue, progress, labelCounts),
+      ...this.toListItem(issue, progress, labelCounts, relationCounts),
       description: issue.description,
       relations: { blocks, blockedBy, related },
       canonicalIdentifier: issue.identifier,
@@ -569,15 +577,20 @@ export class IssuesService {
     const epicIds = rows.filter((row) => row.isEpic).map((row) => row.id);
     const labelIds = uniqueIds(rows.flatMap((row) => row.labels.map((entry) => entry.labelId)));
 
-    const [progress, labelCounts] = await Promise.all([this.epicProgress(epicIds), this.labelCounts(labelIds)]);
+    const [progress, labelCounts, relationCounts] = await Promise.all([
+      this.epicProgress(epicIds),
+      this.labelCounts(labelIds),
+      this.relationCounts(rows.map((row) => row.id)),
+    ]);
 
-    return rows.map((row) => this.toListItem(row, progress, labelCounts));
+    return rows.map((row) => this.toListItem(row, progress, labelCounts, relationCounts));
   }
 
   private toListItem(
     issue: IssueListRow,
     progress: Map<string, EpicProgressDto>,
     labelCounts: Map<string, number>,
+    relationCounts: { blocks: Map<string, number>; blockedBy: Map<string, number> },
   ): IssueListItemDto {
     return {
       id: issue.id,
@@ -603,6 +616,8 @@ export class IssuesService {
         color: issue.project.color,
       },
       epicProgress: issue.isEpic ? (progress.get(issue.id) ?? { done: 0, total: 0 }) : null,
+      blockedByCount: relationCounts.blockedBy.get(issue.id) ?? 0,
+      blocksCount: relationCounts.blocks.get(issue.id) ?? 0,
       sortOrder: issue.sortOrder,
       archivedAt: issue.archivedAt?.toISOString() ?? null,
       createdAt: issue.createdAt.toISOString(),
@@ -670,5 +685,35 @@ export class IssuesService {
     });
 
     return new Map(rows.map((row) => [row.labelId, row._count._all] as const));
+  }
+
+  /**
+   * Two groupBys for every issue on the page, not one per row. `related` never
+   * counts here — it carries no direction, so it is not "stuck" information.
+   */
+  private async relationCounts(
+    issueIds: string[],
+  ): Promise<{ blocks: Map<string, number>; blockedBy: Map<string, number> }> {
+    if (issueIds.length === 0) {
+      return { blocks: new Map(), blockedBy: new Map() };
+    }
+
+    const [fromRows, toRows] = await Promise.all([
+      this.prisma.issueRelation.groupBy({
+        by: ["fromIssueId"],
+        where: { fromIssueId: { in: issueIds }, type: "blocks" },
+        _count: { _all: true },
+      }),
+      this.prisma.issueRelation.groupBy({
+        by: ["toIssueId"],
+        where: { toIssueId: { in: issueIds }, type: "blocks" },
+        _count: { _all: true },
+      }),
+    ]);
+
+    return {
+      blocks: new Map(fromRows.map((row) => [row.fromIssueId, row._count._all] as const)),
+      blockedBy: new Map(toRows.map((row) => [row.toIssueId, row._count._all] as const)),
+    };
   }
 }

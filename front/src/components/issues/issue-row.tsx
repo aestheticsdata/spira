@@ -1,13 +1,14 @@
 import { showsColumn } from "@components/filters/display-options";
 import { ROUTES } from "@components/shared/config/constants";
+import { DateLabel } from "@components/ui/date-label";
 import { EpicGlyph } from "@components/ui/epic-glyph";
 import { Identifier } from "@components/ui/identifier";
 import { LabelChip } from "@components/ui/label-chip";
 import { PriorityBars } from "@components/ui/priority-bars";
 import { ProgressPill } from "@components/ui/progress-pill";
+import { BlockedGlyph, BlocksGlyph } from "@components/ui/relation-glyphs";
 import { StateIcon } from "@components/ui/state-icon";
 import { cn } from "@lib/utils";
-import { format } from "date-fns";
 import Link from "next/link";
 
 import type { DisplayOptions } from "@components/filters/display-options";
@@ -86,6 +87,28 @@ export function IssueRow({
           <span className="truncate text-11 text-ink-5">{parent.title}</span>
         </span>
       )}
+      {/* Not a display option: like the epic progress pill, this is a warning
+          about the row's own state, not a cosmetic column to hide. */}
+      {issue.blockedByCount > 0 && (
+        <span
+          title={`Blocked by ${issue.blockedByCount} issue${issue.blockedByCount === 1 ? "" : "s"}`}
+          className="flex h-5 flex-none items-center gap-1 rounded-md border px-1.5 text-11"
+          style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+        >
+          <BlockedGlyph size={11} />
+          {issue.blockedByCount}
+        </span>
+      )}
+      {issue.blocksCount > 0 && (
+        <span
+          title={`Blocks ${issue.blocksCount} issue${issue.blocksCount === 1 ? "" : "s"}`}
+          className="flex h-5 flex-none items-center gap-1 rounded-md border px-1.5 text-11"
+          style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+        >
+          <BlocksGlyph size={11} />
+          {issue.blocksCount}
+        </span>
+      )}
       {showsColumn(display, "labels") &&
         issue.labels.map((label) => (
           <LabelChip
@@ -95,34 +118,17 @@ export function IssueRow({
         ))}
       {showsColumn(display, "priority") && <PriorityBars priority={issue.priority} />}
       {showsColumn(display, "created") && (
-        <IssueDate
+        <DateLabel
           iso={issue.createdAt}
           label="Created"
         />
       )}
       {showsColumn(display, "updated") && (
-        <IssueDate
+        <DateLabel
           iso={issue.updatedAt}
           label="Updated"
         />
       )}
     </Link>
-  );
-}
-
-/**
- * With both dates on, two bare `Aug 5`s sit side by side with nothing to tell
- * them apart, so each carries its meaning in the title and the accessible name.
- */
-function IssueDate({ iso, label }: { iso: string; label: string }) {
-  const shown = format(new Date(iso), "MMM d");
-
-  return (
-    <span
-      title={`${label} ${shown}`}
-      className="identifier w-11 flex-none text-right text-105 text-ink-7"
-    >
-      {shown}
-    </span>
   );
 }

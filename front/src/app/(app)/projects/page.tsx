@@ -1,6 +1,7 @@
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
 import { Button } from "@components/ui/button";
+import { DateLabel } from "@components/ui/date-label";
 import { ProgressBar } from "@components/ui/progress-pill";
 import { ProjectIcon } from "@components/ui/project-icon";
 import { StateIcon } from "@components/ui/state-icon";
@@ -47,11 +48,12 @@ export default async function ProjectsPage() {
       ) : (
         <div className="sp-scroll min-h-0 flex-1 overflow-y-auto">
           <div className="flex h-8 items-center border-b border-line-chrome px-4 text-11 font-semibold tracking-[0.06em] text-ink-8">
-            <div className="min-w-[220px] flex-1">NAME</div>
+            <div className="w-[170px] flex-none">NAME</div>
             <div className="w-[92px] flex-none">KEY</div>
-            <div className="w-[200px] flex-none">SUMMARY</div>
+            <div className="min-w-0 flex-1">SUMMARY</div>
+            <div className="w-[70px] text-right">CREATED</div>
             <div className="w-[86px] text-right">ISSUES</div>
-            <div className="w-[150px] text-right">PROGRESS</div>
+            <div className="w-[190px] text-right">PROGRESS</div>
             <div className="w-[110px] text-right">STATUS</div>
           </div>
 
@@ -61,7 +63,7 @@ export default async function ProjectsPage() {
               href={ROUTES.projectIssues.path(project.key)}
               className="flex h-9 items-center border-b border-line-soft px-4 hover:bg-surface-hover"
             >
-              <div className="flex min-w-[220px] flex-1 items-center gap-2.5">
+              <div className="flex w-[170px] flex-none items-center gap-2.5">
                 <ProjectIcon
                   project={project}
                   size={18}
@@ -78,12 +80,18 @@ export default async function ProjectsPage() {
                   {project.key}
                 </span>
               </div>
-              <div className="w-[200px] flex-none truncate pr-5 text-12 text-ink-6">{project.summary}</div>
+              <div className="min-w-0 flex-1 truncate pr-5 text-12 text-ink-6">{project.summary}</div>
+              <div className="flex w-[70px] justify-end">
+                <DateLabel
+                  iso={project.createdAt}
+                  label="Created"
+                />
+              </div>
               <div className="identifier w-[86px] text-right text-12 text-ink-4">{project.issueCount}</div>
-              <div className="flex w-[150px] items-center justify-end gap-2.5">
+              <div className="flex w-[190px] items-center justify-end gap-2.5">
                 <ProgressBar
                   value={project.progress}
-                  width={70}
+                  width={110}
                 />
                 <span className="identifier w-[34px] text-right text-11 text-ink-6">
                   {Math.round(project.progress * 100)}%

@@ -38,6 +38,7 @@ export interface ProjectListItemDto extends ProjectSummaryDto {
   progress: number;
   legacyCount: number;
   archivedAt: string | null;
+  createdAt: string;
 }
 
 export interface ProjectDto extends ProjectListItemDto {
@@ -45,7 +46,6 @@ export interface ProjectDto extends ProjectListItemDto {
   startDate: string | null;
   targetDate: string | null;
   issueCounter: number;
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -70,6 +70,8 @@ export interface IssueListItemDto {
   labels: LabelDto[];
   project: ProjectSummaryDto;
   epicProgress: { done: number; total: number } | null;
+  blockedByCount: number;
+  blocksCount: number;
   sortOrder: number;
   /** Non-null once archived. Always null on a list row — lists exclude archived
    *  issues — so only the detail route ever carries a value here. */
