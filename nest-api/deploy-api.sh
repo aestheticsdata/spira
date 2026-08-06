@@ -229,6 +229,24 @@ EOF
   scp "$SCRIPT_DIR/ecosystem.config.js" "$REMOTE_USER_HOST:$API_ROOT/ecosystem.config.js"
 
   ######################################
+  # Carry forward the server .env
+  ######################################
+  # Not in git, not in the rsync source — it only ever exists on the server. Copy
+  # it from the still-live directory into the new release before the swap below
+  # replaces that directory, the same way deploy-front.sh already does.
+  log "➡️  Carrying forward the server .env, if one exists"
+
+  ssh "$REMOTE_USER_HOST" \
+    NEST_DIR="$NEST_DIR" \
+    NEST_RELEASE_REMOTE="$NEST_RELEASE_REMOTE" \
+    'bash -s' << 'EOF'
+set -Eeuo pipefail
+if [ -f "$NEST_DIR/.env" ] && [ ! -f "$NEST_RELEASE_REMOTE/.env" ]; then
+  cp "$NEST_DIR/.env" "$NEST_RELEASE_REMOTE/.env"
+fi
+EOF
+
+  ######################################
   # Switch current ↔ backup (atomic)
   ######################################
   log "➡️  Performing atomic API release switch with backup"

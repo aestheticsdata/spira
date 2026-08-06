@@ -28,6 +28,7 @@ export interface ProjectListItemDto extends ProjectSummaryDto {
   /** How many of this project's issues carry a legacyIdentifier. */
   legacyCount: number;
   archivedAt: string | null;
+  createdAt: string;
 }
 
 export interface ProjectDto extends ProjectListItemDto {
@@ -35,6 +36,5 @@ export interface ProjectDto extends ProjectListItemDto {
   startDate: string | null;
   targetDate: string | null;
   issueCounter: number;
-  createdAt: string;
   updatedAt: string;
 }

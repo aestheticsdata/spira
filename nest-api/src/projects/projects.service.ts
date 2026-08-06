@@ -77,6 +77,7 @@ function toProjectListItemDto(project: ProjectRow, counts: IssueCounts): Project
     progress: counts.issueCount === 0 ? 0 : counts.completedCount / counts.issueCount,
     legacyCount: counts.legacyCount,
     archivedAt: toIso(project.archivedAt),
+    createdAt: project.createdAt.toISOString(),
   };
 }
 
@@ -87,7 +88,6 @@ function toProjectDto(project: ProjectRow, counts: IssueCounts): ProjectDto {
     startDate: toIso(project.startDate),
     targetDate: toIso(project.targetDate),
     issueCounter: project.issueCounter,
-    createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
   };
 }

@@ -78,16 +78,17 @@
   --brand: #3ecf8e;
 
   /* ---- Workflow state colours -------------------------------------- */
-  /* Paired with a glyph shape in `statusGlyph()` — colour alone never carries
-     the state, because Backlog and Todo share one. */
+  /* Paired with a glyph shape in `stateGlyph()` — colour alone never carries
+     the state, because Backlog and Todo share one. Done and Canceled are the
+     two values in this file that are *not* lifted from the design file: they
+     reuse --ok / --danger below rather than the design's shared neutral grey,
+     which otherwise made the two read as the same colour at a glance. */
   --state-backlog: #a6a8ae;
   --state-unstarted: #a6a8ae;
   --state-started: #c9a05a;
   --state-review: #a99fc0;
-  --state-completed: #9aa3b2;
-  --state-completed-fill: #4a4e57;
-  --state-canceled: #95979d;
-  --state-canceled-fill: #3a3b40;
+  --state-completed: #8fae97;
+  --state-canceled: #c48a83;
 
   /* ---- Glyph strokes ----------------------------------------------- */
   /* The neutral the design draws its small marks in — priority bars, and the

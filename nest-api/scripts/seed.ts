@@ -78,13 +78,16 @@ const SORT_ORDER_STEP = 1024;
 type StateKey = "backlog" | "todo" | "prog" | "review" | "done" | "canceled";
 type LabelKey = "feature" | "imp" | "bug" | "demock" | "dash" | "ds";
 
+// Done and Canceled reuse the palette's --ok / --danger semantic tokens rather
+// than a neutral grey: the owner wants Done recognisably green, and a shared
+// grey made it and Canceled read as the same colour at a glance.
 const STATES: { key: StateKey; name: string; type: string; color: string }[] = [
   { key: "backlog", name: "Backlog", type: "backlog", color: "#a6a8ae" },
   { key: "todo", name: "Todo", type: "unstarted", color: "#a6a8ae" },
   { key: "prog", name: "In Progress", type: "started", color: "#c9a05a" },
   { key: "review", name: "In Review", type: "started", color: "#a99fc0" },
-  { key: "done", name: "Done", type: "completed", color: "#9aa3b2" },
-  { key: "canceled", name: "Canceled", type: "canceled", color: "#95979d" },
+  { key: "done", name: "Done", type: "completed", color: "#8fae97" },
+  { key: "canceled", name: "Canceled", type: "canceled", color: "#c48a83" },
 ];
 
 const LABELS: { key: LabelKey; name: string; color: string }[] = [
@@ -501,8 +504,8 @@ function parseArgs(argv: string[]): SeedOptions {
 
   const resolvedUsername = (username ?? process.env.SEED_USERNAME ?? DEFAULT_USERNAME).trim();
   const resolvedPassword = password ?? process.env.SEED_PASSWORD;
-  if (!/^[\w.-]{2,60}$/.test(resolvedUsername)) {
-    throw new UsageError(`Invalid username "${resolvedUsername}" — 2 to 60 letters, digits, dot, dash or underscore.`);
+  if (!/^[\w.@-]{2,60}$/.test(resolvedUsername)) {
+    throw new UsageError(`Invalid username "${resolvedUsername}" — 2 to 60 letters, digits, dot, dash, underscore or @.`);
   }
   if (resolvedPassword !== undefined && resolvedPassword.length < MIN_PASSWORD_LENGTH) {
     throw new UsageError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
