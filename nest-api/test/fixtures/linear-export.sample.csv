@@ -1,0 +1,33 @@
+ID,Team,Title,Description,Status,Estimate,Priority,Project,Assignee,Labels,Cycle Name,Created,Updated,Started,Completed,Canceled,Archived,Parent issue,Due Date
+COS-251,Cosmokaat,Spira — self-hosted Linear replacement,"Replace Linear with a self-hosted, single-user ticketing app.",In Progress,,High,Spira,cosmokaat,,,2026-07-28T14:03:09.052Z,2026-08-05T22:09:03.000Z,2026-07-28T14:10:00.000Z,,,,,
+COS-252,Cosmokaat,M1 — Full CSV export of the Linear workspace,"**When: at the end**, once Spira is functional. Not before — Linear stays in use throughout the build.",Backlog,,Medium,Spira,cosmokaat,,,2026-07-28T22:56:01.860Z,2026-07-28T23:40:04.954Z,,,,,COS-251,
+COS-283,Cosmokaat,M2 — CSV importer: parsing and mapping,"## Parsing
+
+Use a real CSV parser, not a split on commas. Descriptions contain commas, newlines, quotes and fenced code blocks — every one of which breaks naive parsing, and quietly.
+
+## Mapping
+
+* **Statuses** — Linear's states onto the seeded six. ""Verify"" maps to ""In Review""
+* **Labels** — created on the fly, preserving names
+
+```ts
+const priorities = [1, 2, 3];
+const label = ""Improvement, Bug"";
+```",In Progress,,Medium,Spira,cosmokaat,Feature,,2026-07-28T22:59:53.006Z,2026-08-06T12:05:46.657Z,2026-08-06T12:05:46.637Z,,,,COS-251,
+COS-278,Cosmokaat,V2 — Saved views,"A view is a stored query string, not a parallel schema.",Verify,,Medium,Spira,cosmokaat,"Feature,Improvement",,2026-07-28T22:40:00.000Z,2026-08-06T09:00:00.000Z,2026-08-05T10:00:00.000Z,,,,COS-251,
+COS-265,Cosmokaat,P6 — Saved views API,"Stored as the list's own query string.",Done,,Medium,Spira,cosmokaat,Feature,,2026-07-28T22:30:00.000Z,2026-08-05T22:10:00.000Z,2026-08-05T18:00:00.000Z,2026-08-05T22:10:00.000Z,,,COS-251,
+COS-177,Cosmokaat,Uniformiser les schémas de formulaire « saisie de montant »,"Sorti de PFA-22 (audit types/Zod front 2/2), reliquat du chantier 2. À ne pas faire tant qu'il n'y a pas de déclencheur réel — un 3e formulaire, ou le chantier multi-devises.",Backlog,,Low,PFA,cosmokaat,Improvement,,2026-07-26T09:00:00.000Z,2026-07-26T09:30:00.000Z,,,,,,
+COS-29,Cosmokaat,Passer le front à TypeScript 7,,Todo,,Low,PFA,cosmokaat,"Improvement,Feature",,2026-07-09T09:00:00.000Z,2026-07-09T09:00:00.000Z,,,,,,
+COS-185,Cosmokaat,"Dépenses : animer les chiffres des widgets et la barre de répartition","Animation des KPI, de la barre, et des libellés.",Done,,Medium,PFA,cosmokaat,Improvement,,2026-07-27T09:00:00.000Z,2026-07-27T18:00:00.000Z,2026-07-27T10:00:00.000Z,2026-07-27T18:00:00.000Z,,,,
+COS-201,Cosmokaat,Polyhedra from The Symmetries of Things,"Scanline rasteriser, depth buffer, procedural materials.",In Progress,,High,3D engine,cosmokaat,,,2026-07-27T15:42:09.091Z,2026-07-28T10:00:00.000Z,2026-07-27T16:00:00.000Z,,,,,
+COS-235,Cosmokaat,de-mock — the engine behind the console,"Replaces every fake readout with a real one.",Backlog,,High,3D engine,cosmokaat,,,2026-07-28T09:00:00.000Z,2026-07-28T09:00:00.000Z,,,,,,
+COS-236,Cosmokaat,"E2 — Projection: orthographic, FOV and clip planes",,Backlog,,Medium,3D engine,cosmokaat,,,2026-07-28T09:05:00.000Z,2026-07-28T09:05:00.000Z,,,,,COS-235,
+COS-239,Cosmokaat,"E6 — Renderer instrumentation: staged timings, draw calls, fill rate",,Backlog,,Medium,3D engine,cosmokaat,,,2026-07-28T09:10:00.000Z,2026-07-28T09:10:00.000Z,,,,,COS-235,
+COS-120,Cosmokaat,Port registry: one source of truth for ks-b,"Ports, status, start/stop, reassignment.",Backlog,,High,Zeus,cosmokaat,Feature,,2026-07-23T20:09:36.294Z,2026-07-23T20:30:00.000Z,,,,,,
+COS-100,Cosmokaat,Message list virtualisation on the existing skeleton,,Done,,Medium,1991chat — Chat front-end,cosmokaat,Feature,,2026-06-22T13:33:36.589Z,2026-07-12T10:00:00.000Z,2026-07-01T09:00:00.000Z,2026-07-12T10:00:00.000Z,,,,
+COS-88,Cosmokaat,Community visibility opt-out (visibleInCommunity toggle),,Todo,,Medium,Worldweathr,cosmokaat,Feature,,2026-07-23T16:23:49.305Z,2026-07-23T17:00:00.000Z,,,,,,
+COS-190,Cosmokaat,Epic: Iknos — self-hosted monitoring for ks-b,"ECS logs, Prometheus metrics, grouped errors and alerts, with no lock-in.",Backlog,,High,Iknos,cosmokaat,,,2026-07-27T15:13:07.525Z,2026-07-27T15:30:00.000Z,,,,,,
+COS-191,Cosmokaat,ECS log ingestion and retention windows,,Backlog,,Medium,Iknos,cosmokaat,Feature,,2026-07-27T15:20:00.000Z,2026-07-27T15:20:00.000Z,,,,,COS-190,
+COS-231,Cosmokaat,"Registry scaffold: cssVars, css and copy-and-own components",,Backlog,,Medium,Exalus,cosmokaat,"Feature,External Lib",,2026-07-27T14:22:32.054Z,2026-07-27T14:40:00.000Z,,,,,,
+COS-300,Cosmokaat,Import browser bookmarks and dedupe,,Backlog,,Low,BKMK,cosmokaat,,,2026-07-29T00:53:22.027Z,2026-07-29T00:53:22.027Z,,,,,,
+COS-999,Cosmokaat,A duplicate closed as such,"Closed as a duplicate of COS-283.",Duplicate,,Medium,Spira,cosmokaat,,,2026-07-30T09:00:00.000Z,2026-07-31T09:00:00.000Z,,,,,,

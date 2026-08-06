@@ -24,7 +24,8 @@
       "@labels/*": ["./src/labels/*"],
       "@states/*": ["./src/states/*"],
       "@search/*": ["./src/search/*"],
-      "@views/*": ["./src/views/*"]
+      "@views/*": ["./src/views/*"],
+      "@migration/*": ["./src/migration/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
