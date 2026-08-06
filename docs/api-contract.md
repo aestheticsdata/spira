@@ -177,7 +177,7 @@ run that would make it ambiguous — `199` is rejected with a message telling th
 `suggest-key` returns the first three alphanumeric characters of the name, uppercased, de-duplicated
 against existing keys by appending a digit.
 
-Four keys are refused outright with a 400: `ISSUE`, `LOGIN`, `API`, `NEW`. A project is reached at
+Five keys are refused outright with a 400: `ISSUE`, `LOGIN`, `API`, `NEW`, `VIEWS`. A project is reached at
 `/<key>/issues`, where Next resolves the static segment before the dynamic `[key]` one, so a project
 holding one of those names would be permanently unreachable. `suggest-key` never proposes them
 either. `PROJECTS` and `SETTINGS` need no entry: both are longer than the five characters the column

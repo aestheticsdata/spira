@@ -21,6 +21,8 @@ export const FIELD_LIMITS = {
   summary: 255,
   /** `Issue.title`. */
   issueTitle: 255,
-  /** `Project.icon` — a Material Symbols ligature name or one emoji. */
+  /** `Project.icon` and `SavedView.icon` — a Material Symbols name or one emoji. */
   icon: 40,
+  /** `SavedView.name`. */
+  viewName: 80,
 } as const;

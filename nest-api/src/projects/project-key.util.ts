@@ -17,7 +17,7 @@ export const PROJECT_KEY_PATTERN = /^[A-Z0-9]{2,5}$/;
  * to say so before the request leaves the browser. This copy is the one that
  * decides.
  */
-export const RESERVED_PROJECT_KEYS: readonly string[] = ["ISSUE", "LOGIN", "API", "NEW"];
+export const RESERVED_PROJECT_KEYS: readonly string[] = ["ISSUE", "LOGIN", "API", "NEW", "VIEWS"];
 
 const SUGGESTION_LENGTH = 3;
 const MAX_KEY_LENGTH = FIELD_LIMITS.projectKey;

@@ -1,18 +1,20 @@
 "use client";
 
+import { countChangedDisplay } from "@components/filters/display-options";
 import { countActiveFilters, EMPTY_FILTERS, labelMode, setLabelMode, toggle } from "@components/filters/issue-filters";
 import { useListView } from "@components/filters/use-list-view";
 import { Button } from "@components/ui/button";
 import { EpicGlyph } from "@components/ui/epic-glyph";
 import { PriorityBars } from "@components/ui/priority-bars";
 import { StateIcon } from "@components/ui/state-icon";
+import { ActiveViewChip, ViewBarActions } from "@components/views/view-bar-actions";
 import { PRIORITY_NAMES, priorityName } from "@lib/status";
 import { cn } from "@lib/utils";
 import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 
 import type { EpicFilter, IssueFilters } from "@components/filters/issue-filters";
-import type { IssueListItemDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
+import type { IssueListItemDto, LabelDto, SavedViewDto, WorkflowStateDto } from "@lib/api-types";
 
 interface FilterSources {
   states: WorkflowStateDto[];
@@ -407,10 +409,29 @@ function epicChip(epic: EpicFilter, epics: IssueListItemDto[]): { operator: stri
   }
 }
 
-export function FilterChips({ states, labels, epics }: FilterSources) {
-  const { filters, setFilters } = useListView();
+/**
+ * The bar under the toolbar: what is filtered, which view it came from, and the
+ * ways to write it down.
+ *
+ * It used to appear only once a filter existed. A display-only view — "grouped
+ * by priority, everything" — is worth saving too, and so is a view you have
+ * opened and not yet touched, so the bar now shows for any of the three.
+ */
+export function FilterChips({
+  states,
+  labels,
+  epics,
+  views,
+  projectKey,
+}: FilterSources & {
+  views: SavedViewDto[];
+  /** Scopes a view saved from here; null saves it workspace-wide. */
+  projectKey?: string | null;
+}) {
+  const { filters, display, viewId, setFilters } = useListView();
+  const filtered = countActiveFilters(filters) > 0;
 
-  if (countActiveFilters(filters) === 0) {
+  if (!filtered && countChangedDisplay(display) === 0 && viewId === null) {
     return null;
   }
 
@@ -419,6 +440,8 @@ export function FilterChips({ states, labels, epics }: FilterSources) {
 
   return (
     <div className="sp-scroll flex flex-none items-center gap-2 overflow-x-auto border-b border-line-chrome px-4 py-2">
+      <ActiveViewChip views={views} />
+
       {filters.states.length > 0 && (
         <Chip
           field="Status"
@@ -464,20 +487,20 @@ export function FilterChips({ states, labels, epics }: FilterSources) {
       )}
 
       <div className="flex-1" />
-      <button
-        type="button"
-        onClick={() => setFilters(EMPTY_FILTERS)}
-        className="flex-none px-1.5 text-115 text-ink-6 hover:text-ink-2"
-      >
-        Clear
-      </button>
-      {/* Saved views need a table of their own; until then the URL is the view. */}
-      <span
-        title="Saved views arrive with COS-278. This filter is already shareable — copy the URL."
-        className="flex-none cursor-default px-1.5 text-115 text-ink-link opacity-60"
-      >
-        Save view
-      </span>
+      {/* Nothing to clear when the bar is here for a display change or a view. */}
+      {filtered && (
+        <button
+          type="button"
+          onClick={() => setFilters(EMPTY_FILTERS)}
+          className="flex-none px-1.5 text-115 text-ink-6 hover:text-ink-2"
+        >
+          Clear
+        </button>
+      )}
+      <ViewBarActions
+        views={views}
+        projectKey={projectKey}
+      />
     </div>
   );
 }

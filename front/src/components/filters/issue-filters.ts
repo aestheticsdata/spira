@@ -13,13 +13,13 @@
  * distinguish the two.
  */
 
-import { list, raw } from "@components/filters/query-params";
-import { PRIORITY_NAMES } from "@lib/status";
+import { deriveEpic, FILTER_PARSERS } from "@components/filters/list-params";
+import { createLoader } from "nuqs/server";
 
 import type { RawParams } from "@components/filters/query-params";
 
-/** Derived rather than restated: `@lib/status` already owns the priority scale. */
-export const MAX_PRIORITY = PRIORITY_NAMES.length - 1;
+/** Owned by the parser that enforces it; re-exported from where it has always been imported. */
+export { MAX_PRIORITY } from "@components/filters/list-params";
 
 /** The four arms of the epic filter. `is`/`isNot` name one; the others count. */
 export type EpicFilter =
@@ -47,43 +47,22 @@ export const EMPTY_FILTERS: IssueFilters = {
   epic: null,
 };
 
-function intList(params: RawParams, key: string, max: number): number[] {
-  const entries = list(params, key)
-    .map((entry) => Number(entry))
-    .filter((entry) => Number.isInteger(entry) && entry >= 0 && entry <= max);
-
-  return [...new Set(entries)].sort((a, b) => a - b);
-}
-
-function parseEpic(params: RawParams): EpicFilter | null {
-  const is = raw(params, "epic")?.trim().toUpperCase();
-  if (is) {
-    return { kind: "is", identifier: is };
-  }
-
-  const isNot = raw(params, "excludeEpic")?.trim().toUpperCase();
-  if (isNot) {
-    return { kind: "isNot", identifier: isNot };
-  }
-
-  const has = raw(params, "hasEpic");
-  if (has === "true") {
-    return { kind: "any" };
-  }
-  if (has === "false") {
-    return { kind: "none" };
-  }
-
-  return null;
-}
+/**
+ * One loader, both read paths. `createLoader` accepts a `URLSearchParams` and
+ * the plain object Next hands a page, which is exactly `RawParams` — so this
+ * signature is unchanged and no caller had to move.
+ */
+const loadFilters = createLoader(FILTER_PARSERS);
 
 export function parseIssueFilters(params: RawParams): IssueFilters {
+  const values = loadFilters(params);
+
   return {
-    states: list(params, "state"),
-    priorities: intList(params, "priority", MAX_PRIORITY),
-    labels: list(params, "label"),
-    excludeLabels: list(params, "excludeLabel"),
-    epic: parseEpic(params),
+    states: values.state,
+    priorities: values.priority,
+    labels: values.label,
+    excludeLabels: values.excludeLabel,
+    epic: deriveEpic(values),
   };
 }
 
@@ -129,15 +108,24 @@ export function issueFiltersToParams(filters: IssueFilters): URLSearchParams {
 }
 
 /**
- * The API query for a project's list: the filter params plus the project.
+ * The API query for a list: the filter params, plus the project when there is
+ * one.
  *
  * Identical to {@link issueFiltersToParams} except for the project, which is
  * the route rather than a filter — that sameness is the point, and the reason
  * this returns params rather than a bespoke request object.
+ *
+ * Without a key the query spans every project, which is what a workspace-level
+ * saved view (COS-278) asks for: it has no project to be scoped to, so leaving
+ * the param off is not an omission but the whole of what it means.
  */
-export function issueFiltersToApiQuery(filters: IssueFilters, projectKey: string): URLSearchParams {
+export function issueFiltersToApiQuery(filters: IssueFilters, projectKey?: string): URLSearchParams {
   const params = issueFiltersToParams(filters);
-  params.set("project", projectKey);
+
+  if (projectKey) {
+    params.set("project", projectKey);
+  }
+
   return params;
 }
 

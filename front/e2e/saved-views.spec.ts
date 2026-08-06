@@ -93,3 +93,89 @@ test("the plain list is a view worth saving", async ({ page }) => {
 
   await deleteView(page, view.id);
 });
+
+/* ------------------------------------------------------------- the UI (COS-278) */
+
+test("saves from the bar, opens from the sidebar, and updates in place", async ({ page }) => {
+  const urgent = await createIssue(page, { projectKey: "IKN", title: `Bar urgent ${RUN}`, priority: 1 });
+  const low = await createIssue(page, { projectKey: "IKN", title: `Bar low ${RUN}`, priority: 4 });
+  const name = `Bar view ${RUN}`;
+
+  await page.goto("/IKN/issues/");
+  await page.getByRole("button", { name: FILTER }).click();
+  await page.getByRole("button", { name: "Priority" }).click();
+  await page.getByRole("button", { name: "Urgent" }).click();
+  await expect(page).toHaveURL(/priority=1/, { timeout: 15_000 });
+  await page.keyboard.press("Escape");
+
+  // The bar's control and the dialog's submit share a name, so the dialog is
+  // reached as a dialog rather than by hoping the second match is the right one.
+  await page.getByRole("button", { name: "Save view" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByRole("button", { name: "Save view" }).click();
+
+  // Saved, and the URL now says which view is open.
+  await expect(page).toHaveURL(/view=/, { timeout: 15_000 });
+  await expect(page.getByRole("link", { name })).toBeVisible();
+
+  // Editing inside a view offers to write the change back rather than only to
+  // start another one.
+  await page.getByRole("button", { name: /^Remove the priority filter/ }).click();
+  await page.getByRole("button", { name: FILTER }).click();
+  await page.getByRole("button", { name: "Priority" }).click();
+  await page.getByRole("button", { name: "Low" }).click();
+  await expect(page).toHaveURL(/priority=4/, { timeout: 15_000 });
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("button", { name: "Save as new" })).toBeVisible();
+  await page.getByRole("button", { name: "Update view" }).click();
+  // Written back: the offer to write it back is what goes away.
+  await expect(page.getByRole("button", { name: "Update view" })).toHaveCount(0, { timeout: 15_000 });
+
+  // Reached from the sidebar, from somewhere else entirely, it restores the
+  // edited list — not the one it was first saved as.
+  await page.goto("/projects/");
+  await page.getByRole("link", { name }).click();
+
+  await expect(page).toHaveURL(/priority=4/, { timeout: 15_000 });
+  await expect(page.getByRole("link", { name: new RegExp(low.identifier) })).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(urgent.identifier) })).toHaveCount(0);
+
+  // Cleaned up through the page that exists to do it.
+  await page.goto("/views/");
+  await page.getByRole("button", { name: `Delete ${name}` }).click();
+  await expect(page.getByRole("link", { name })).toHaveCount(0, { timeout: 15_000 });
+
+  await archiveIssue(page, urgent.identifier);
+  await archiveIssue(page, low.identifier);
+});
+
+test("a workspace view opens as a list spanning every project", async ({ page }) => {
+  // Two projects, so the claim is proved rather than assumed: nothing in the
+  // seed is Urgent, and a list that spans everything still shows nothing if
+  // nothing matches.
+  const here = await createIssue(page, { projectKey: "IKN", title: `Cross IKN ${RUN}`, priority: 1 });
+  const there = await createIssue(page, { projectKey: "SPI", title: `Cross SPI ${RUN}`, priority: 1 });
+
+  const view = await createView(page, { name: `Workspace ${RUN}`, query: "priority=1&group=project" });
+
+  await page.goto(`/views/${view.id}/`);
+
+  // The route carries the id; the query carries the list. Both, after the
+  // redirect that puts the stored query back in the address bar.
+  await expect(page).toHaveURL(/priority=1/, { timeout: 15_000 });
+  await expect(page).toHaveURL(new RegExp(`view=${view.id}`));
+  await expect(page.getByText(`Workspace ${RUN}`).first()).toBeVisible();
+
+  // Two projects on one list — the first list in Spira that is not scoped to a
+  // single one, and what makes grouping by project worth offering at all.
+  await expect(page.getByRole("link", { name: new RegExp(here.identifier) })).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(there.identifier) })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Iknos/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Spira/ })).toBeVisible();
+
+  await deleteView(page, view.id);
+  await archiveIssue(page, here.identifier);
+  await archiveIssue(page, there.identifier);
+});

@@ -49,10 +49,24 @@ describe("parseDisplayOptions", () => {
     expect(parseDisplayOptions(url("cols=nonsense")).columns).toEqual(DEFAULT_COLUMNS);
   });
 
+  it("names columns case-sensitively, so `Status` is not a column", () => {
+    expect(parseDisplayOptions(url("cols=Status")).columns).toEqual(DEFAULT_COLUMNS);
+  });
+
   it("reads the booleans, and ignores a value that is not one", () => {
     expect(parseDisplayOptions(url("empty=true&legacy=false")).emptyGroups).toBe(true);
     expect(parseDisplayOptions(url("empty=true&legacy=false")).legacy).toBe(false);
     expect(parseDisplayOptions(url("legacy=perhaps")).legacy).toBe(true);
+  });
+
+  it("trims and lowercases a boolean, unlike hasEpic", () => {
+    // `empty` and `legacy` go through `booleanFrom`; the epic cardinality is read
+    // raw. The asymmetry is deliberate and pinned on both sides.
+    expect(parseDisplayOptions(url("empty=%20TRUE")).emptyGroups).toBe(true);
+  });
+
+  it("only accepts true and false — a 1 is not a yes", () => {
+    expect(parseDisplayOptions(url("empty=1")).emptyGroups).toBe(false);
   });
 
   it("reads a Next searchParams object as well as URLSearchParams", () => {

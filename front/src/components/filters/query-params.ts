@@ -6,6 +6,15 @@
  * what a repeated key, a comma-joined list and an absent value mean. Two copies
  * of that would drift, and the first symptom would be a saved view that loads
  * back slightly different from how it was saved.
+ *
+ * Every rule here takes an already-extracted string, because that is what the
+ * nuqs parsers in `list-params` are handed. nuqs supplies the plumbing — one
+ * definition read by both the Server Components and the client hook, and
+ * correct handling of a repeated key — while this file goes on owning what the
+ * values actually mean. That division is the whole of the arrangement.
+ *
+ * `raw` survives it: two callers still need to pull one key off a `RawParams`
+ * without a parser in front of it.
  */
 
 /** Either a real `URLSearchParams` or the object Next hands a page. */
@@ -28,18 +37,13 @@ export function raw(params: RawParams, key: string): string | null {
 }
 
 /**
- * A comma-joined param as a sorted, de-duplicated list.
+ * A comma-joined value as a sorted, de-duplicated list.
  *
  * Sorted so that choosing the same three values in a different order gives the
  * same link — which is what lets COS-265 tell two saved views apart by their
- * query alone.
+ * query alone. Lexically, not numerically: these are ids.
  */
-export function list(params: RawParams, key: string): string[] {
-  const value = raw(params, key);
-  if (value === null) {
-    return [];
-  }
-
+export function listFrom(value: string): string[] {
   return [
     ...new Set(
       value
@@ -50,22 +54,22 @@ export function list(params: RawParams, key: string): string[] {
   ].sort();
 }
 
-/** `true`/`false` only. Anything else is not an answer, so it means "default". */
-export function boolean(params: RawParams, key: string): boolean | null {
-  const value = raw(params, key)?.trim().toLowerCase();
-  if (value === "true") {
+/** `true`/`false` only, trimmed and lowercased. Anything else is not an answer. */
+export function booleanFrom(value: string): boolean | null {
+  const normalised = value.trim().toLowerCase();
+  if (normalised === "true") {
     return true;
   }
-  if (value === "false") {
+  if (normalised === "false") {
     return false;
   }
   return null;
 }
 
-/** A param constrained to a known set; anything else falls back to the default. */
-export function literal<T extends string>(params: RawParams, key: string, allowed: readonly T[], fallback: T): T {
-  const value = raw(params, key)?.trim() as T | undefined;
-  return value !== undefined && allowed.includes(value) ? value : fallback;
+/** A value constrained to a known set. Trimmed; null when it is not one of them. */
+export function literalFrom<T extends string>(value: string, allowed: readonly T[]): T | null {
+  const trimmed = value.trim() as T;
+  return allowed.includes(trimmed) ? trimmed : null;
 }
 
 /** Two sets equal regardless of order — how a non-default set is detected. */

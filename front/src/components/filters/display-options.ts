@@ -12,12 +12,23 @@
  * mean "unchanged".
  */
 
-import { boolean, list, literal, sameSet } from "@components/filters/query-params";
+import { COLUMNS, DEFAULT_COLUMNS, DISPLAY_PARSERS, GROUP_MODES, ORDERS } from "@components/filters/list-params";
+import { sameSet } from "@components/filters/query-params";
+import { createLoader } from "nuqs/server";
 
+import type { ColumnKey, GroupMode, OrderBy } from "@components/filters/list-params";
 import type { RawParams } from "@components/filters/query-params";
 
-export const GROUP_MODES = ["status", "epic", "priority", "project", "none"] as const;
-export type GroupMode = (typeof GROUP_MODES)[number];
+/**
+ * The vocabularies live with the parsers that enforce them, and are re-exported
+ * here because this is where the rest of the app has always imported them from.
+ * The dependency runs one way only: a parser has to know its allowed values,
+ * and `DEFAULT_DISPLAY` below is then derived from the parsers rather than
+ * restated beside them.
+ */
+export { COLUMNS, DEFAULT_COLUMNS, GROUP_MODES, ORDERS };
+
+export type { ColumnKey, GroupMode, OrderBy };
 
 export const GROUP_LABELS: Record<GroupMode, string> = {
   status: "Status",
@@ -27,23 +38,12 @@ export const GROUP_LABELS: Record<GroupMode, string> = {
   none: "No grouping",
 };
 
-/**
- * The API's `orderBy` values, minus `title`. The ticket asks for four and the
- * server happens to accept a fifth; offering one the spec did not ask for is
- * how a display menu turns into a list of everything the backend can do.
- */
-export const ORDERS = ["manual", "priority", "created", "updated"] as const;
-export type OrderBy = (typeof ORDERS)[number];
-
 export const ORDER_LABELS: Record<OrderBy, string> = {
   manual: "Manual",
   priority: "Priority",
   created: "Created",
   updated: "Updated",
 };
-
-export const COLUMNS = ["identifier", "status", "priority", "labels", "created", "updated"] as const;
-export type ColumnKey = (typeof COLUMNS)[number];
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
   identifier: "Identifier",
@@ -53,9 +53,6 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   created: "Created",
   updated: "Updated",
 };
-
-/** The row as it has always looked: everything but the created date. */
-export const DEFAULT_COLUMNS: ColumnKey[] = ["identifier", "labels", "priority", "status", "updated"];
 
 export interface DisplayOptions {
   group: GroupMode;
@@ -68,25 +65,34 @@ export interface DisplayOptions {
   legacy: boolean;
 }
 
+/**
+ * Read off the parsers rather than written down beside them. The default is a
+ * property of how a key is read — an absent key *is* its default — so having it
+ * in two places was an invitation for the URL and the object to disagree.
+ */
 export const DEFAULT_DISPLAY: DisplayOptions = {
-  group: "status",
-  order: "manual",
-  columns: DEFAULT_COLUMNS,
-  emptyGroups: false,
-  legacy: true,
+  group: DISPLAY_PARSERS.group.defaultValue,
+  order: DISPLAY_PARSERS.order.defaultValue,
+  columns: DISPLAY_PARSERS.cols.defaultValue,
+  emptyGroups: DISPLAY_PARSERS.empty.defaultValue,
+  legacy: DISPLAY_PARSERS.legacy.defaultValue,
 };
 
+/** The display half of the same map, read the same way on both sides. */
+const loadDisplay = createLoader(DISPLAY_PARSERS);
+
 export function parseDisplayOptions(params: RawParams): DisplayOptions {
-  const columns = list(params, "cols").filter((entry): entry is ColumnKey => COLUMNS.includes(entry as ColumnKey));
+  const values = loadDisplay(params);
 
   return {
-    group: literal(params, "group", GROUP_MODES, DEFAULT_DISPLAY.group),
-    order: literal(params, "order", ORDERS, DEFAULT_DISPLAY.order),
-    // An empty or unreadable `cols` is not "hide every column" — a URL truncated
-    // in a chat window would otherwise render a list of blank rows.
-    columns: columns.length > 0 ? columns : DEFAULT_COLUMNS,
-    emptyGroups: boolean(params, "empty") ?? DEFAULT_DISPLAY.emptyGroups,
-    legacy: boolean(params, "legacy") ?? DEFAULT_DISPLAY.legacy,
+    group: values.group,
+    order: values.order,
+    // An empty or unreadable `cols` is not "hide every column" — the parser
+    // returns null so this default fires, because a URL truncated in a chat
+    // window would otherwise render a list of blank rows.
+    columns: values.cols,
+    emptyGroups: values.empty,
+    legacy: values.legacy,
   };
 }
 
