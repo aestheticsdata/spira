@@ -8,11 +8,23 @@ import { join } from "path";
 import { pipeline } from "stream/promises";
 import { createGzip } from "zlib";
 import { SshBackupService } from "@infrastructure/ssh-backup/ssh-backup.service";
+import { withZeusReport } from "@infrastructure/zeus-report";
 
 import type { DbBackupConfig } from "@config/db-backup.config";
+import type { ZeusCronOutcome } from "@infrastructure/zeus-report";
 
-/** Six fields, seconds first — `@nestjs/schedule`'s own form. Midnight and noon, in the process's zone. */
+/**
+ * Six fields, seconds first — `@nestjs/schedule`'s own form. Midnight and noon, in the process's
+ * zone. Declared once because Zeus is told the same string the scheduler runs on, and the two
+ * drifting apart is exactly how a healthy job starts being reported as late.
+ */
 const BACKUP_SCHEDULE = "0 0 */12 * * *";
+
+/** The slug this job reports under. Stable: it is the identity of the row on Zeus's `/cron`. */
+const BACKUP_CRON_KEY = "db-backup";
+
+/** Zeus caps a summary at 200 characters and rejects anything longer outright. */
+const MAX_SUMMARY = 200;
 
 const FILE_PREFIX = "spira-";
 const FILE_SUFFIX = ".sql.gz";
@@ -56,19 +68,36 @@ export class DbBackupCronService {
   ) {}
 
   /**
-   * Dumps the database and copies it to `vps-debian`, twice a day.
+   * Dumps the database and copies it to `vps-debian`, twice a day — and tells Zeus what happened
+   * (COS-447).
    *
-   * Spira had no backup at all before this — the rotation documented in `DEPLOY.md` was a crontab
+   * Spira had no backup at all before COS-441 — the rotation documented in `DEPLOY.md` was a crontab
    * snippet nobody had installed, on a box that has no cron daemon to install it into. That is why
    * the schedule lives in the app process, the way PFA's and bkmk's do: it depends on nothing but
    * the API being up, which is the one thing already being watched.
+   *
+   * Watched by whom, though, was the part still missing. The very first real run failed with
+   * `EACCES: permission denied, mkdir '/home/spira'` and was caught only because it had been
+   * triggered by hand; left to fire at midnight it would have failed into a log nobody reads. Both
+   * of PFA's recorded failure modes — a dump erroring for weeks, and a deploy that dropped one
+   * variable so the job never ran — now surface on Zeus's `/cron`, and the schedule reported
+   * alongside is what lets Zeus flag the job overdue if it stops firing altogether.
    */
   @Cron(BACKUP_SCHEDULE)
   async handleDbBackup(): Promise<void> {
+    await withZeusReport(BACKUP_CRON_KEY, BACKUP_SCHEDULE, () => this.runBackup());
+  }
+
+  /**
+   * No `timezone` is reported, deliberately: the `@Cron` above pins none, so it fires in the
+   * process's own zone — UTC on ks-b — which is what Zeus reads a schedule in by default. Naming
+   * `Europe/Paris` here would have it expect every run two hours early in summer.
+   */
+  private async runBackup(): Promise<ZeusCronOutcome> {
     const config = this.configService.get<DbBackupConfig>("dbBackup");
 
     if (!config?.enabled) {
-      return;
+      return { status: "skipped", summary: "backups are disabled in this environment" };
     }
 
     const missing = REQUIRED_CONFIG.filter(([key]) => !config[key]).map(([, variable]) => variable);
@@ -76,22 +105,53 @@ export class DbBackupCronService {
       // Named rather than counted. "Missing config" sends the reader back to the source to find out
       // which one; this is actionable on its own.
       this.logger.warn(`DB backup skipped — missing config: ${missing.join(", ")}`);
-      return;
+      return { status: "skipped", summary: `missing config: ${missing.join(", ")}`.slice(0, MAX_SUMMARY) };
     }
 
     try {
-      const localPath = await this.dump(config);
+      const { path, bytes } = await this.dump(config);
       await this.pruneLocal(config);
-      await this.shipOffBox(config, localPath);
+
+      // Checked here rather than inside `shipOffBox` so the dump still happens when the SSH leg is
+      // unconfigured: a local copy is worth having, and is what the operator restores from nine
+      // times in ten.
+      if (!this.sshBackup.enabled) {
+        const missingSsh = this.sshBackup.missingConfig;
+        const reason = missingSsh.length > 0 ? `missing config: ${missingSsh.join(", ")}` : "SSH backup is disabled";
+        this.logger.error(`Off-server copy skipped — ${reason}; the dump is local only`);
+
+        // `failed`, not `ok` with a caveat. The job's reason for existing is a copy that survives
+        // losing ks-b; a dump sitting on the box that was lost is not one. A green row here would be
+        // precisely the backup that looks healthy right up until the day it is needed.
+        return {
+          status: "failed",
+          summary: `dumped locally but not shipped — ${reason}`.slice(0, MAX_SUMMARY),
+          detail: { bytes, file: path, offBox: false },
+        };
+      }
+
+      await this.shipOffBox(config, path);
+
+      // The size is the one number worth carrying: a dump that succeeds and shrinks by an order of
+      // magnitude is a broken backup that looks exactly like a working one.
+      return {
+        summary: `dumped ${config.dbName} (${bytes} bytes) → ${config.remoteBackupPath}`.slice(0, MAX_SUMMARY),
+        detail: { bytes, file: path, offBox: true },
+      };
     } catch (err) {
-      // Swallowed deliberately: an unhandled rejection here lands in `@nestjs/schedule` and takes
-      // down more than the backup. The log is the report.
-      this.logger.error(`DB backup failed: ${(err as Error).message}`);
+      const message = (err as Error).message;
+
+      // Reported rather than rethrown. `withZeusReport` would report and rethrow, and the throw
+      // would land in `@nestjs/schedule` as an unhandled rejection that takes down more than the
+      // backup — this job swallowed its errors before and continues to, so the report changes what
+      // is *visible* without changing what the scheduler does.
+      this.logger.error(`DB backup failed: ${message}`);
+      return { status: "failed", summary: message.slice(0, MAX_SUMMARY) };
     }
   }
 
-  /** Dumps and gzips in one pass, returning the path of the finished file. */
-  private async dump(config: DbBackupConfig): Promise<string> {
+  /** Dumps and gzips in one pass, returning the finished file and its size. */
+  private async dump(config: DbBackupConfig): Promise<{ path: string; bytes: number }> {
     await mkdir(config.dumpPath, { recursive: true });
 
     const finalPath = join(config.dumpPath, dumpFileName(new Date()));
@@ -152,7 +212,7 @@ export class DbBackupCronService {
     await rename(partialPath, finalPath);
     this.logger.log(`Dumped ${config.dbName} → ${finalPath} (${size} bytes)`);
 
-    return finalPath;
+    return { path: finalPath, bytes: size };
   }
 
   /** The first line of defense: recent history, on the box, cheap to restore from. */
@@ -174,13 +234,8 @@ export class DbBackupCronService {
     }
   }
 
-  /** The copy that survives ks-b itself being lost. */
+  /** The copy that survives ks-b itself being lost. The caller has already checked it can be made. */
   private async shipOffBox(config: DbBackupConfig, localPath: string): Promise<void> {
-    if (!this.sshBackup.enabled) {
-      this.logger.warn("Off-server copy skipped — SSH backup is not configured; the dump is local only");
-      return;
-    }
-
     const remoteDir = config.remoteBackupPath.replace(/\/$/, "");
     const fileName = localPath.split("/").pop()!;
     await this.sshBackup.copyFile(localPath, `${remoteDir}/${fileName}`);

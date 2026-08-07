@@ -21,11 +21,32 @@ export class SshBackupService {
   }
 
   /**
+   * The environment variables standing between this service and a working off-server copy, named.
+   *
+   * Named rather than counted, and derived rather than duplicated: `enabled` is defined as this list
+   * being empty, so what the backup job reports to Zeus and what this service will actually do
+   * cannot disagree. Only meaningful in production — outside it `privateKey` is deliberately never
+   * read, so every variable would look missing.
+   *
+   * The username is checked here although it never disabled the service before. An empty one used to
+   * surface as an SSH authentication failure at the last step of a job that had already dumped;
+   * naming the variable up front is the same information, hours earlier.
+   */
+  get missingConfig(): string[] {
+    const missing: string[] = [];
+    if (this.config.host === "") missing.push("SPIRA_BACKUP_SERVER_IP");
+    if (this.config.username === "") missing.push("DEBIAN_OVH_VPS_SSH_USER");
+    // Null covers both "unset" and "set but unreadable" — `readPrivateKey` logs which at boot.
+    if (this.config.privateKey === null) missing.push("DEBIAN_OVH_VPS_SSH_KEY_PATH");
+    return missing;
+  }
+
+  /**
    * Whether an off-server copy can actually be made. A key that failed to load leaves the service
-   * configured but unusable, and the caller reports that as a skip rather than pretending it worked.
+   * configured but unusable, and the caller reports that as a failure rather than pretending it worked.
    */
   get enabled(): boolean {
-    return this.config.enabled && this.config.privateKey !== null && this.config.host !== "";
+    return this.config.enabled && this.missingConfig.length === 0;
   }
 
   async copyFile(localPath: string, remotePath: string): Promise<void> {

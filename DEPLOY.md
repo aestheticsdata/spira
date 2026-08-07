@@ -32,7 +32,45 @@ Taken elsewhere in the fleet, so do not reuse: `3000` pfa-front, `3001` hiwaysim
 
 ¹ The two standing exceptions to the convention that Zeus's registry documents as accepted facts.
 
-Register Spira in Zeus when its registry is live, so the next app does not have to grep for this.
+## Zeus registration
+
+Spira is registered in Zeus's port registry as one app with two services. This is data entry in
+Zeus's UI, not a code change — the registry is a pair of database tables, and `Service.port` is
+UNIQUE, so a collision is impossible to save rather than merely discouraged.
+
+App:
+
+| Field | Value |
+|---|---|
+| name | `spira` — also what `ZEUS_APP_NAME` must be set to |
+| displayName | `Spira` |
+| apiBlock | `6700` |
+| dbName | `spira` |
+
+Services:
+
+| Field | Front | API |
+|---|---|---|
+| role | `front` | `api` |
+| port | `3004` | `6700` |
+| block | — | `6700` |
+| pm2Name | `spira-front` | `spira-nest-api` |
+| nginxLocation | `spira.1991computer.com /` | `spira.1991computer.com /api/` |
+| nginxConfPath | `/etc/nginx/conf.d/spira.conf` | `/etc/nginx/conf.d/spira.conf` |
+| ecosystemPath | `/var/www/spira/public_html/ecosystem.config.cjs` | `/var/www/spira/ecosystem.config.js` |
+| healthUrl | `https://spira.1991computer.com/` | `https://spira.1991computer.com/api/health` |
+
+Both ports follow the convention, so neither service needs a `conventionNote`.
+
+The two services share one vhost, as pfa's do — `grep -rl '127.0.0.1:3004\|127.0.0.1:6700' /etc/nginx`
+on ks-b returns that one file and nothing else. It is worth having checked rather than assumed:
+`nginxConfPath` is the file a port reassignment rewrites, the riskiest write Zeus makes, and the
+fleet does not reliably name these after the app — conway's lives inside the shared apex vhost.
+
+**Register before deploying the cron reporting below.** Zeus creates a cron row by itself the first
+time one reports, but never an app: a report naming an app the registry has never heard of is a
+`400`, and nothing on Spira's side surfaces that — `withZeusReport` swallows every non-2xx by
+design. In the wrong order the backup looks reported and is not.
 
 ## Nginx — critical configuration for the session cookie
 
@@ -110,6 +148,15 @@ Three optional overrides exist and should normally be left alone: `SPIRA_DUMP_BI
 `mysqldump`; MariaDB ships it as `mariadb-dump` and does not always keep the symlink),
 `SPIRA_LOCAL_RETENTION_DAYS` (14) and `SPIRA_REMOTE_RETENTION_COPIES` (28).
 
+Zeus cron reporting (COS-447) adds three more. Leave `ZEUS_INGEST_TOKEN` or `ZEUS_APP_NAME` unset and
+the client is a silent no-op — which is what makes the API run identically on a laptop.
+
+| Variable | Description |
+|---|---|
+| `ZEUS_INGEST_URL` | `http://127.0.0.1:6600/api/cron-runs` |
+| `ZEUS_INGEST_TOKEN` | the same value as Zeus's own — copy it from `/var/www/zeus/nest-api/ecosystem.config.js` |
+| `ZEUS_APP_NAME` | `spira`, Spira's slug in Zeus's port registry — **which must exist first**, see Zeus registration |
+
 ## One-time provisioning
 
 ```bash
@@ -179,6 +226,29 @@ so one dump that succeeds while corrupt cannot destroy the last good copy.
 The job is inert unless `NODE_ENV=production`, so a dev machine never dumps or connects out. When a
 required variable is missing it logs `DB backup skipped — missing config: <names>` and does nothing —
 it never half-runs. A dump that fails, or comes back under 1 KB, is deleted rather than shipped.
+
+### Reported to Zeus
+
+The job reports every run to Zeus's `/cron` (COS-447), which is the part that makes a failure
+visible to someone who is not reading `pm2 logs`:
+
+| On Zeus | When |
+|---|---|
+| `ok` | dumped and shipped off-box; `detail.bytes` carries the size |
+| `skipped` | a required variable is unset — the summary names which ones |
+| `failed` | the dump errored, **or** it succeeded but the SSH config is incomplete so nothing left ks-b |
+
+That last row is deliberate. A dump sitting on the box you have lost is not a backup, so a local-only
+run is red rather than green with a footnote — `detail.offBox` says which happened.
+
+Reporting can never break the backup: the client swallows every network error, timeout and non-2xx,
+takes 2 seconds at most and never retries. The cost is that a rejected report is invisible here,
+which is the whole reason the registry entry has to exist first.
+
+The reported schedule is the same `BACKUP_SCHEDULE` constant the scheduler runs on, so Zeus's
+"overdue" detection cannot be defeated by the two drifting apart. No timezone is reported, because
+the `@Cron` pins none and therefore fires in the process's zone — UTC on ks-b, which is what Zeus
+assumes by default.
 
 ### Verifying it works
 
