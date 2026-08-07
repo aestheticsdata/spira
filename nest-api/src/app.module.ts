@@ -12,6 +12,7 @@ import { ProjectsModule } from "@projects/projects.module";
 import { IssuesModule } from "@issues/issues.module";
 import { SearchModule } from "@search/search.module";
 import { ViewsModule } from "@views/views.module";
+import { TokensModule } from "@tokens/tokens.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ViewsModule } from "@views/views.module";
     IssuesModule,
     SearchModule,
     ViewsModule,
+    TokensModule,
   ],
   controllers: [AppController],
 })

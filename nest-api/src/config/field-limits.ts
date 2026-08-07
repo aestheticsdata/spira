@@ -29,6 +29,8 @@ export const FIELD_LIMITS = {
   username: 60,
   /** `Issue.identifier` and `Issue.legacyIdentifier`. */
   identifier: 20,
+  /** `ApiToken.name` — what the token is for, shown in the settings list. */
+  apiTokenName: 80,
 } as const;
 
 /**

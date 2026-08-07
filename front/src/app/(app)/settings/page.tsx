@@ -1,9 +1,10 @@
 import { ChangePasswordForm } from "@app/(app)/settings/change-password-form";
 import { LabelList } from "@app/(app)/settings/label-list";
+import { TokenList } from "@app/(app)/settings/token-list";
 import { AppHeader } from "@components/shell/app-header";
 import { serverFetch } from "@lib/server-api";
 
-import type { AuthenticatedUserDto, LabelDto } from "@lib/api-types";
+import type { ApiTokenDto, AuthenticatedUserDto, LabelDto } from "@lib/api-types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Settings · Spira" };
@@ -32,10 +33,13 @@ function initials(username: string): string {
 }
 
 export default async function SettingsPage() {
-  const [user, labels] = await Promise.all([
+  const [user, labels, tokens] = await Promise.all([
     serverFetch<AuthenticatedUserDto>("/users/me"),
     serverFetch<LabelDto[]>("/labels"),
+    serverFetch<ApiTokenDto[]>("/tokens"),
   ]);
+
+  const liveToken = tokens.find((token) => token.revokedAt === null) ?? null;
 
   return (
     <>
@@ -87,8 +91,17 @@ export default async function SettingsPage() {
                   <span className="identifier flex-1 text-115 text-ink-9">{MCP_ENDPOINT}</span>
                 </div>
               </div>
+              <div>
+                <div className="mb-1.5 text-115 text-ink-7">API token</div>
+                <div className="flex h-8 items-center rounded-lg border border-line bg-field px-2.5">
+                  <span className="identifier flex-1 truncate text-115 text-ink-9">
+                    {liveToken ? `spira_pat_${"\u2022".repeat(20)}${liveToken.suffix}` : "No token issued"}
+                  </span>
+                </div>
+              </div>
               <p className="text-125 text-ink-7">
-                API tokens and the MCP server itself arrive in a later phase — nothing on this card answers yet.
+                Tokens are live and authenticate the API (C1). The MCP server itself is not built yet, so this endpoint
+                still answers nothing — issue a token here, and it will be waiting when the connector ships.
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 {MCP_TOOLS.map((tool) => (
@@ -102,6 +115,8 @@ export default async function SettingsPage() {
               </div>
             </div>
           </section>
+
+          <TokenList tokens={tokens} />
 
           <LabelList labels={labels} />
         </div>

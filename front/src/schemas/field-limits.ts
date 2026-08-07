@@ -25,4 +25,6 @@ export const FIELD_LIMITS = {
   icon: 40,
   /** `SavedView.name`. */
   viewName: 80,
+  /** `ApiToken.name` — what the token is for. */
+  apiTokenName: 80,
 } as const;

@@ -93,6 +93,7 @@
       "^@states/(.*)$": "<rootDir>/states/$1",
       "^@search/(.*)$": "<rootDir>/search/$1",
       "^@views/(.*)$": "<rootDir>/views/$1",
+      "^@tokens/(.*)$": "<rootDir>/tokens/$1",
       "^@migration/(.*)$": "<rootDir>/migration/$1"
     },
     "collectCoverageFrom": [

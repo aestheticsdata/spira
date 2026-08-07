@@ -173,10 +173,18 @@ model SavedView {
   @@index([projectId])
 }
 
+/// The raw token is shown once at creation and never stored. `tokenHash` is a
+/// SHA-256 of it, not a bcrypt: the token is 32 random bytes, so there is no
+/// low-entropy secret for a slow KDF to protect, and bcrypt's cost would be paid
+/// on every single authenticated request rather than once per login.
 model ApiToken {
   id         String    @id @db.Char(36)
   name       String    @db.VarChar(80)
   tokenHash  String    @unique @db.VarChar(255)
+  /// Last four characters of the raw token, so a row in the list is identifiable
+  /// — `spira_pat_••••8f2c` in the design. Four hex characters of a 256-bit
+  /// secret narrow nothing.
+  tokenSuffix String   @db.VarChar(8)
   lastUsedAt DateTime?
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())

@@ -108,6 +108,24 @@ export interface SearchResponseDto {
   results: SearchResultDto[];
 }
 
+export interface ApiTokenDto {
+  id: string;
+  name: string;
+  /** Last four characters of the raw token — the list's only handle on which secret this is. */
+  suffix: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Only the creation response carries `token`. It is hashed at rest and never returned again, so this
+ * is the one object in the app that has ever held the raw value.
+ */
+export interface CreatedApiTokenDto extends ApiTokenDto {
+  token: string;
+}
+
 /**
  * A saved view is a stored list query, not a schema of its own: `query` is the
  * address bar's own query string, so opening a view is pushing it back and
