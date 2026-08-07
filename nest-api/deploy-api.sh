@@ -324,7 +324,7 @@ EOF
   write_deploy_log || log "⚠️  Deploy changelog update skipped (non-fatal)"
 
   log "✅ API deployment completed successfully"
-  log "ℹ️  Nest API (port 6100) is running"
+  log "ℹ️  Nest API (port 6700) is running"
   log "ℹ️  Previous version is available in: $NEST_BACKUP_DIR"
   log "ℹ️  You can manually rollback with: ./deploy-api.sh rollback"
 }
