@@ -224,6 +224,10 @@ EOF
   ######################################
   # Rsync ecosystem.config.js
   ######################################
+  # Gitignored and kept on this machine, the way Zeus, PFA and bkmk all do it: it holds
+  # the process env as literals — including the vps-debian credentials the backup job
+  # needs — so it must never reach git, and scp'ing it here means the server copy is
+  # never hand-edited either. Start a fresh one from ecosystem.config.example.js.
   log "➡️  Syncing ecosystem.config.js"
 
   scp "$SCRIPT_DIR/ecosystem.config.js" "$REMOTE_USER_HOST:$API_ROOT/ecosystem.config.js"
@@ -320,7 +324,7 @@ EOF
   write_deploy_log || log "⚠️  Deploy changelog update skipped (non-fatal)"
 
   log "✅ API deployment completed successfully"
-  log "ℹ️  Nest API (port 6100) is running"
+  log "ℹ️  Nest API (port 6700) is running"
   log "ℹ️  Previous version is available in: $NEST_BACKUP_DIR"
   log "ℹ️  You can manually rollback with: ./deploy-api.sh rollback"
 }

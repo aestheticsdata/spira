@@ -68,9 +68,18 @@ server {
   `trust proxy` and `session({ proxy: true })` to read it.
 - **`Host`** ensures the cookie is scoped to the right domain.
 
-## Server environment (`/var/www/spira/nest-api/.env`)
+## Server environment (`nest-api/ecosystem.config.js`)
 
-This file is **not** in git and is copied forward across releases by `deploy-api.sh`.
+PM2 owns `process.env`, and the values live as literals in `nest-api/ecosystem.config.js` — which is
+**gitignored and kept on your machine**, with `ecosystem.config.example.js` as the template in git.
+`deploy-api.sh` scp's it to `/var/www/spira/ecosystem.config.js` on every deploy, so the server copy
+is never hand-edited and no credential ever reaches git. pfa, bkmk and zeus all work this way.
+
+PM2 being the source matters because `PrismaService` and `RedisService` read `process.env` in their
+constructors, before Nest's `ConfigModule` runs.
+
+The server's `nest-api/.env` still exists and is still carried forward across releases, but the API
+no longer reads it — the ecosystem file's values win. Editing it on ks-b changes nothing.
 
 | Variable | Description |
 |---|---|
@@ -87,22 +96,19 @@ cannot leave the backup authenticating with a stale one.
 
 | Variable | Description |
 |---|---|
-| `SPIRA_DUMP_PATH` | local dump directory, e.g. `/home/spira/dumps` — created if absent |
+| `SPIRA_DUMP_PATH` | local dump directory, `/home/spira/mysqldump/` — must exist, see Backups |
 | `SPIRA_BACKUP_SERVER_PATH` | destination directory on `vps-debian` |
 | `SPIRA_BACKUP_SERVER_IP` | `vps-debian`'s address |
 | `DEBIAN_OVH_VPS_SSH_USER` | SSH account on `vps-debian` |
 | `DEBIAN_OVH_VPS_SSH_KEY_PATH` | path to the private key on ks-b |
 
 The last three are the same names PFA already uses, and take the same values — copy them from
-`/var/www/pfa/nest-api/.env` on ks-b rather than issuing a second key for the same account.
+`/var/www/pfa/apiserver/ecosystem.config.js` on ks-b rather than issuing a second key for the same
+account.
 
 Three optional overrides exist and should normally be left alone: `SPIRA_DUMP_BINARY` (default
 `mysqldump`; MariaDB ships it as `mariadb-dump` and does not always keep the symlink),
 `SPIRA_LOCAL_RETENTION_DAYS` (14) and `SPIRA_REMOTE_RETENTION_COPIES` (28).
-
-`ecosystem.config.js` reads this file at `pm2 start/reload` time and spreads it into `env_production`, so
-PM2 remains the source of `process.env` — `PrismaService` and `RedisService` read it in their constructors,
-before Nest's `ConfigModule` runs.
 
 ## One-time provisioning
 
@@ -117,6 +123,7 @@ sudo mkdir -p /var/www/spira && sudo chown -R debian:debian /var/www/spira
 Then, once the API is on the server for the first time:
 
 ```bash
+export PATH="$HOME/.local/share/pnpm:$PATH"   # pnpm is not on a non-interactive PATH
 cd /var/www/spira/nest-api && pnpm migrate:deploy && pnpm seed
 ```
 
@@ -144,6 +151,16 @@ when a release carries one, so a schema change is never an accident of a routine
 
 The API backs itself up. `DbBackupCronService` runs on `@Cron("0 0 */12 * * *")` — midnight and noon
 UTC — dumps the `spira` database, gzips it, and copies it to `vps-debian` over SFTP.
+
+The local dump directory must exist and be writable by `debian`, matching `/home/pfa/mysqldump`:
+
+```bash
+sudo mkdir -p /home/spira/mysqldump && sudo chown -R debian:debian /home/spira
+```
+
+Without it the job fails with `EACCES: permission denied, mkdir '/home/spira'` — at midnight, into a
+log nobody is reading. The **remote** directory needs no such step: `SshBackupService` creates it
+recursively before every put.
 
 The schedule lives in the app process rather than in cron because **ks-b has no cron daemon**:
 `crontab` is not even installed. This file previously carried two crontab lines that were never
