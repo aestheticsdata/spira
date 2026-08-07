@@ -1,4 +1,6 @@
 allowBuilds:
   "@prisma/engines": true
+  cpu-features: true
   prisma: true
+  ssh2: true
   unrs-resolver: true
