@@ -164,20 +164,20 @@ export class IssuesService {
         ...(query.excludeLabel?.length ? { none: { labelId: { in: query.excludeLabel } } } : {}),
       };
     }
-    // The epic filter's four arms compose through AND rather than by assigning
-    // `where.epicId` three times over, so "in no epic" and "not in FOO" can be
-    // asked together without one silently overwriting the other.
-    const epicClauses: Prisma.IssueWhereInput[] = [];
+    // Clauses that must AND together rather than overwrite one another. The epic filter's four arms
+    // compose here — so "in no epic" and "not in FOO" can be asked together without one silently
+    // replacing the other — and the free-text filter joins them for the same reason.
+    const andClauses: Prisma.IssueWhereInput[] = [];
 
     if (query.hasEpic !== undefined) {
-      epicClauses.push({ epicId: query.hasEpic ? { not: null } : null });
+      andClauses.push({ epicId: query.hasEpic ? { not: null } : null });
     }
     if (query.epic) {
       const epicId = await this.resolveIssueId(query.epic);
       if (!epicId) {
         return [];
       }
-      epicClauses.push({ epicId });
+      andClauses.push({ epicId });
     }
     if (query.excludeEpic) {
       const epicId = await this.resolveIssueId(query.excludeEpic);
@@ -188,11 +188,25 @@ export class IssuesService {
         // against NULL is NULL, not true, so the terse form would quietly drop
         // every issue that belongs to no epic at all — which is exactly the set
         // a user asking "not in FOO" expects to keep.
-        epicClauses.push({ OR: [{ epicId: null }, { epicId: { not: epicId } }] });
+        andClauses.push({ OR: [{ epicId: null }, { epicId: { not: epicId } }] });
       }
     }
-    if (epicClauses.length > 0) {
-      where.AND = epicClauses;
+    if (query.q) {
+      // LIKE rather than the FULLTEXT index `GET /search` uses. This has to compose with every other
+      // clause above, and MySQL's MATCH cannot appear inside a Prisma `where` — and unlike search,
+      // which ranks the whole workspace, this is scoped by those clauses first. Identifiers are
+      // included so `list_issues({ q: "COS-177" })` finds the issue by either of its names.
+      andClauses.push({
+        OR: [
+          { title: { contains: query.q } },
+          { description: { contains: query.q } },
+          { identifier: { contains: query.q.toUpperCase() } },
+          { legacyIdentifier: { contains: query.q.toUpperCase() } },
+        ],
+      });
+    }
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
     }
 
     const rows = await this.prisma.issue.findMany({

@@ -238,8 +238,14 @@ A key already in use answers 409; the create/edit form shows it against the key 
 List filters (all optional, all repeatable where plural):
 `project` (key), `state` (id, repeatable), `label` (id, repeatable), `excludeLabel` (id, repeatable),
 `priority` (int, repeatable), `epic` (identifier), `excludeEpic` (identifier), `hasEpic` (bool),
-`isEpic` (bool), `includeArchived` (bool, default false),
+`isEpic` (bool), `includeArchived` (bool, default false), `q` (free text),
 `orderBy` (`manual` | `created` | `updated` | `priority` | `title`, default `manual`).
+
+`q` matches title, description and **both** identifier columns, so `q=COS-177` finds an issue by
+either of its names. It is a filter, not a search: it composes with every other param above, which is
+what `GET /search` cannot do — that route ranks the whole workspace and answers a different question.
+It uses `LIKE` rather than the FULLTEXT index for the same reason, since MySQL's `MATCH` cannot appear
+inside the composed `where` (C2).
 
 The four epic arms compose through `AND`, so they can be combined rather than overwriting each other:
 
