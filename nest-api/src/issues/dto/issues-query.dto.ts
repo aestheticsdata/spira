@@ -13,6 +13,7 @@ import {
   Min,
 } from "class-validator";
 import { FIELD_LIMITS } from "@config/field-limits";
+import { trim } from "@config/transforms";
 import { MAX_PRIORITY, PROJECT_KEY_PATTERN } from "@issues/dto/create-issue.dto";
 
 import type { TransformFnParams } from "class-transformer";
@@ -130,6 +131,19 @@ export class IssuesQueryDto {
   @Transform(toBoolean)
   @IsBoolean()
   includeArchived?: boolean;
+
+  /**
+   * Free text over title, description and both identifier columns (C2).
+   *
+   * Distinct from `GET /search`, which ranks a global result set and answers a different question.
+   * This one is a *filter*: it composes with project, state, label and epic, so "open issues in PFA
+   * mentioning redis" is one query rather than an intersection the caller has to compute.
+   */
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(FIELD_LIMITS.issueTitle)
+  q?: string;
 
   @IsOptional()
   @IsIn(ISSUE_ORDER_BY)

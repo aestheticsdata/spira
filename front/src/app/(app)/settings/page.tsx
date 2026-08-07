@@ -9,20 +9,23 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Settings · Spira" };
 
-/** The tool surface the connector will expose. Listed here so the shape of the
- *  contract is visible before the server exists — none of it is live yet. */
+/** The tools the connector exposes (COS-286). Names mirror Linear's MCP server. */
 const MCP_TOOLS = [
   "list_projects",
+  "get_project",
   "list_issues",
   "get_issue",
-  "create_issue",
-  "update_issue",
-  "assign_epic",
-  "set_relation",
-  "search",
+  "save_issue",
+  "list_labels",
+  "list_issue_statuses",
 ];
 
-const MCP_ENDPOINT = "https://spira.1991computer.com/api/mcp";
+/**
+ * The connector is a stdio process the client launches, not an HTTP endpoint — this card used to
+ * advertise `/api/mcp`, which was never built and never will be. What it calls is the ordinary REST
+ * API with a bearer token, so the address worth showing is the one the token is for.
+ */
+const MCP_COMMAND = "claude mcp add spira -- node <spira>/mcp/dist/index.js";
 
 function initials(username: string): string {
   const words = username.trim().split(/\s+/).filter(Boolean);
@@ -86,9 +89,9 @@ export default async function SettingsPage() {
             </div>
             <div className="flex flex-col gap-3 p-4">
               <div>
-                <div className="mb-1.5 text-115 text-ink-7">Endpoint</div>
+                <div className="mb-1.5 text-115 text-ink-7">Register the connector</div>
                 <div className="flex h-8 items-center rounded-lg border border-line bg-field px-2.5">
-                  <span className="identifier flex-1 text-115 text-ink-9">{MCP_ENDPOINT}</span>
+                  <span className="identifier flex-1 truncate text-115 text-ink-9">{MCP_COMMAND}</span>
                 </div>
               </div>
               <div>
@@ -100,8 +103,9 @@ export default async function SettingsPage() {
                 </div>
               </div>
               <p className="text-125 text-ink-7">
-                Tokens are live and authenticate the API (C1). The MCP server itself is not built yet, so this endpoint
-                still answers nothing — issue a token here, and it will be waiting when the connector ships.
+                Issue a token above, build <span className="identifier text-ink-5">mcp/</span>, and register it with the
+                command above. States and labels are given by name, and either identifier form works — a legacy{" "}
+                <span className="identifier text-ink-5">COS-</span> reference resolves to the issue it became.
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 {MCP_TOOLS.map((tool) => (
