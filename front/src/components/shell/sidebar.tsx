@@ -2,14 +2,22 @@ import { NewIssueTrigger } from "@components/issues/new-issue-trigger";
 import { ROUTES } from "@components/shared/config/constants";
 import { SearchTrigger } from "@components/shell/search-trigger";
 import { SidebarLink } from "@components/shell/sidebar-link";
+import { UserMenu } from "@components/shell/user-menu";
 import { ProjectIcon } from "@components/ui/project-icon";
 import { splitViews } from "@components/views/saved-views.util";
 import Image from "next/image";
-import Link from "next/link";
 
 import type { ProjectListItemDto, SavedViewDto } from "@lib/api-types";
 
-export function Sidebar({ projects, views }: { projects: ProjectListItemDto[]; views: SavedViewDto[] }) {
+export function Sidebar({
+  username,
+  projects,
+  views,
+}: {
+  username: string;
+  projects: ProjectListItemDto[];
+  views: SavedViewDto[];
+}) {
   const { workspace, project } = splitViews(views);
 
   return (
@@ -23,9 +31,6 @@ export function Sidebar({ projects, views }: { projects: ProjectListItemDto[]; v
           priority
         />
         <div className="flex-1 text-13 font-semibold tracking-row text-ink-2">Spira</div>
-        {/* U+200A HAIR SPACE, as the design has it — JSX does not decode HTML
-            entities, so `&hairsp;` would render literally. */}
-        <div className="identifier rounded-sm border border-line px-1 py-0.5 text-9 text-ink-8">{"1 user"}</div>
       </div>
 
       <NewIssueTrigger projects={projects} />
@@ -96,13 +101,8 @@ export function Sidebar({ projects, views }: { projects: ProjectListItemDto[]; v
         ))}
       </div>
 
-      <div className="mt-2 flex flex-col gap-px border-t border-line-chrome pt-2">
-        <Link
-          href="/settings"
-          className="flex h-7 items-center gap-[9px] rounded-md px-2 text-125 text-ink-5 hover:bg-line-soft hover:text-ink-2"
-        >
-          Settings
-        </Link>
+      <div className="mt-2 border-t border-line-chrome pt-2">
+        <UserMenu username={username} />
       </div>
     </nav>
   );
