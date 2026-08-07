@@ -13,7 +13,7 @@ import type { AuthenticatedUserDto } from "@lib/api-types";
  * still same-origin — nginx owns /api in production, `next.config.js` rewrites
  * it in development — so no host and no CORS are involved either way.
  */
-export function LoginForm() {
+export function LoginForm({ destination }: { destination: string }) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +45,8 @@ export function LoginForm() {
       // Consume the response so the session cookie is committed before the
       // navigation, then refresh so the server layout re-runs with it.
       (await response.json()) as AuthenticatedUserDto;
-      router.replace("/projects");
+      // Already narrowed to a same-origin path by the server component that rendered this form.
+      router.replace(destination);
       router.refresh();
     } catch {
       setError("The API is unreachable.");

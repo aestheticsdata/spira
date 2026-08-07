@@ -7,6 +7,7 @@ import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
+import { Identifier } from "@components/ui/identifier";
 import { serverFetch, serverFetchOptional } from "@lib/server-api";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -55,14 +56,16 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
         <div className="sp-scroll min-w-0 flex-1 overflow-y-auto border-r border-line-chrome pt-10 pb-[90px]">
           <div className="mx-auto max-w-[700px] px-[30px]">
             <div className="mb-[18px] flex items-center gap-[9px]">
-              <span className="identifier text-125 font-medium tracking-[0.02em] text-ink-2">{issue.identifier}</span>
+              {/* Was hand-rolled here at list-row sizes (12.5px/ink-2) while the design specifies
+                  16px/ink-1 for the detail header — the shared component's `header` variant, which
+                  until now had no caller at all. */}
+              <Identifier
+                identifier={issue.identifier}
+                legacy={issue.legacyIdentifier}
+                variant="header"
+              />
               {issue.legacyIdentifier && (
-                <>
-                  <span className="identifier rounded-sm border border-dashed border-line-legacy px-[5px] py-px text-105 text-ink-6">
-                    {issue.legacyIdentifier}
-                  </span>
-                  <span className="text-115 text-ink-8">was {issue.legacyIdentifier} in Linear</span>
-                </>
+                <span className="text-115 text-ink-8">was {issue.legacyIdentifier} in Linear</span>
               )}
             </div>
 

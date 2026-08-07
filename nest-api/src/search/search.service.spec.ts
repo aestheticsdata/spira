@@ -15,13 +15,14 @@ interface TestIssue {
   id: string;
   identifier: string;
   legacyIdentifier: string | null;
+  archivedAt: Date | null;
   title: string;
   project: { key: string };
   state: TestState;
 }
 
 interface FindFirstWhere {
-  archivedAt: null;
+  archivedAt?: null;
   identifier?: string;
   legacyIdentifier?: string;
 }
@@ -38,6 +39,7 @@ function issueRow(overrides: Partial<TestIssue> = {}): TestIssue {
     id: "issue-1",
     identifier: "PFA-12",
     legacyIdentifier: null,
+    archivedAt: null,
     title: "Ship it",
     project: { key: "PFA" },
     state: STATE,
@@ -135,14 +137,24 @@ describe("SearchService", () => {
       expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
-    it("excludes archived issues from the identifier and legacy lookups", async () => {
+    it("finds archived issues by exact identifier, and says they are archived", async () => {
+      issues = [issueRow({ identifier: "PFA-1", archivedAt: new Date("2026-01-01") })];
+
+      const result = await service.search(dto("PFA-1"));
+
+      expect(result.results).toEqual([expect.objectContaining({ identifier: "PFA-1", archived: true })]);
+    });
+
+    it("does not filter the identifier and legacy lookups by archivedAt", async () => {
       await service.search(dto("PFA-1"));
 
       const [identifierWhere, legacyWhere] = prisma.issue.findFirst.mock.calls.map(
         (call) => (call as [{ where: FindFirstWhere }])[0].where,
       );
-      expect(identifierWhere.archivedAt).toBeNull();
-      expect(legacyWhere.archivedAt).toBeNull();
+      // Asking by name is not browsing. The prefix and text passes below still exclude archived —
+      // covered separately — so this is the one lookup that reaches them.
+      expect(identifierWhere).not.toHaveProperty("archivedAt");
+      expect(legacyWhere).not.toHaveProperty("archivedAt");
     });
   });
 

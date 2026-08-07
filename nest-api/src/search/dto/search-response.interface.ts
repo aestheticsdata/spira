@@ -6,6 +6,8 @@ export type SearchMatch = "identifier" | "legacy" | "text";
 export interface SearchResultDto {
   identifier: string;
   legacyIdentifier: string | null;
+  /** Only an exact identifier match can be archived; the browse passes filter them out. */
+  archived: boolean;
   title: string;
   projectKey: string;
   state: WorkflowStateDto;

@@ -27,8 +27,15 @@ export default function proxy(request: NextRequest) {
 
   if (!request.cookies.has("spira.sid") && !isLogin) {
     const url = request.nextUrl.clone();
+    const destination = `${pathname}${request.nextUrl.search}`;
     url.pathname = "/login";
     url.search = "";
+    // The whole point of the legacy-identifier work is that a COS-xxx URL pasted out of an old commit
+    // still lands on the issue. Dropping the destination here defeated exactly that: the paste went to
+    // an empty /projects and the reference was gone. `/` is skipped because the default already covers it.
+    if (destination !== "/") {
+      url.searchParams.set("next", destination);
+    }
     return NextResponse.redirect(url);
   }
 

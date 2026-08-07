@@ -13,6 +13,7 @@ const ISSUE_SELECT = {
   id: true,
   identifier: true,
   legacyIdentifier: true,
+  archivedAt: true,
   title: true,
   project: { select: { key: true } },
   state: { select: { id: true, name: true, type: true, color: true, position: true } },
@@ -24,6 +25,7 @@ function toSearchResult(row: IssueRow, matchedOn: SearchMatch): SearchResultDto 
   return {
     identifier: row.identifier,
     legacyIdentifier: row.legacyIdentifier,
+    archived: row.archivedAt !== null,
     title: row.title,
     projectKey: row.project.key,
     state: {
@@ -63,19 +65,28 @@ export class SearchService {
       results.push(toSearchResult(row, matchedOn));
     };
 
+    // Deliberately unfiltered by `archivedAt`, unlike every pass below. Asking for one issue by name
+    // is not browsing: the import carries Linear's archived issues over, and a COS-xxx pasted out of an
+    // old commit is *more* likely to name one of them, not less. Answering "nothing matches" for an
+    // issue whose URL opens fine is the worse lie. The row carries `archived` so the front says so.
     const [exact, legacy] = await Promise.all([
       this.prisma.issue.findFirst({
-        where: { archivedAt: null, identifier: identifierTerm },
+        where: { identifier: identifierTerm },
         select: ISSUE_SELECT,
       }),
       this.prisma.issue.findFirst({
-        where: { archivedAt: null, legacyIdentifier: identifierTerm },
+        where: { legacyIdentifier: identifierTerm },
         select: ISSUE_SELECT,
       }),
     ]);
 
+    // Suppressed when a live identifier of the same spelling also matched. `findByEither` resolves
+    // `identifier` first, so in that case /issue/<term> serves the live issue and never redirects —
+    // and the banner promising a redirect would be describing something that will not happen.
     const legacyResolved =
-      legacy?.legacyIdentifier != null ? { legacy: legacy.legacyIdentifier, identifier: legacy.identifier } : null;
+      !exact && legacy?.legacyIdentifier != null
+        ? { legacy: legacy.legacyIdentifier, identifier: legacy.identifier }
+        : null;
 
     if (exact) push(exact, "identifier");
     if (legacy) push(legacy, "legacy");
@@ -110,7 +121,12 @@ export class SearchService {
   private async textMatches(term: string, limit: number): Promise<IssueRow[]> {
     if (term.length >= MIN_FULLTEXT_TERM) {
       const ids = await this.fullTextIds(term, limit);
-      if (ids) {
+      // `ids?.length` rather than `ids`: an empty array is a FULLTEXT pass that ran and matched
+      // nothing, and `[]` being truthy made this return it as the final answer — the LIKE fallback
+      // below was unreachable for any term the index simply did not hit. FULLTEXT matching nothing is
+      // not the same fact as nothing matching: it tokenises on non-word characters, so `COS-177` is
+      // indexed as `COS` and `177`, and a substring living inside a longer word is invisible to it.
+      if (ids?.length) {
         return this.hydrate(ids);
       }
     }
