@@ -81,6 +81,25 @@ This file is **not** in git and is copied forward across releases by `deploy-api
 | `FRONTEND_URL` | `https://spira.1991computer.com` — used for CORS |
 | `COOKIE_SECURE` | leave unset (defaults to secure in production); set `false` only on a plain-HTTP host |
 
+Backups (COS-441) add five more. The dump credentials are **not** among them — they are parsed out of
+`DATABASE_URL`, so there is exactly one statement of how to reach the database and a rotated password
+cannot leave the backup authenticating with a stale one.
+
+| Variable | Description |
+|---|---|
+| `SPIRA_DUMP_PATH` | local dump directory, e.g. `/home/spira/dumps` — created if absent |
+| `SPIRA_BACKUP_SERVER_PATH` | destination directory on `vps-debian` |
+| `SPIRA_BACKUP_SERVER_IP` | `vps-debian`'s address |
+| `DEBIAN_OVH_VPS_SSH_USER` | SSH account on `vps-debian` |
+| `DEBIAN_OVH_VPS_SSH_KEY_PATH` | path to the private key on ks-b |
+
+The last three are the same names PFA already uses, and take the same values — copy them from
+`/var/www/pfa/nest-api/.env` on ks-b rather than issuing a second key for the same account.
+
+Three optional overrides exist and should normally be left alone: `SPIRA_DUMP_BINARY` (default
+`mysqldump`; MariaDB ships it as `mariadb-dump` and does not always keep the symlink),
+`SPIRA_LOCAL_RETENTION_DAYS` (14) and `SPIRA_REMOTE_RETENTION_COPIES` (28).
+
 `ecosystem.config.js` reads this file at `pm2 start/reload` time and spreads it into `env_production`, so
 PM2 remains the source of `process.env` — `PrismaService` and `RedisService` read it in their constructors,
 before Nest's `ConfigModule` runs.
@@ -123,10 +142,45 @@ when a release carries one, so a schema change is never an accident of a routine
 
 ## Backups
 
+The API backs itself up. `DbBackupCronService` runs on `@Cron("0 0 */12 * * *")` — midnight and noon
+UTC — dumps the `spira` database, gzips it, and copies it to `vps-debian` over SFTP.
+
+The schedule lives in the app process rather than in cron because **ks-b has no cron daemon**:
+`crontab` is not even installed. This file previously carried two crontab lines that were never
+installed anywhere and could not have been, and Spira consequently had no backup at all until
+COS-441. PFA and bkmk schedule theirs the same way, for the same reason.
+
+| | Path | Retention |
+|---|---|---|
+| Local | `$SPIRA_DUMP_PATH/spira-<ISO minute>.sql.gz` | 14 days, pruned by mtime |
+| Off-server | `vps-debian:$SPIRA_BACKUP_SERVER_PATH/` | newest 28 generations (14 days × 2) |
+
+Both legs are kept: the local copy is the cheap restore, the off-server copy is the one that survives
+losing ks-b. Unlike PFA — which overwrites a single `pfadump.sql` — each run ships a **new dated file**,
+so one dump that succeeds while corrupt cannot destroy the last good copy.
+
+The job is inert unless `NODE_ENV=production`, so a dev machine never dumps or connects out. When a
+required variable is missing it logs `DB backup skipped — missing config: <names>` and does nothing —
+it never half-runs. A dump that fails, or comes back under 1 KB, is deleted rather than shipped.
+
+### Verifying it works
+
+Backups fail silently by nature — nobody notices until a restore. Check the log after the first
+midnight or noon:
+
 ```bash
-# Nightly, retained 14 days, plus an off-server copy.
-0 3 * * * mysqldump --single-transaction spira | gzip > /home/spira/dumps/spira-$(date +\%F).sql.gz
-5 3 * * * find /home/spira/dumps -name 'spira-*.sql.gz' -mtime +14 -delete
+pm2 logs spira-nest-api --lines 200 --nostream | grep -i -E 'backup|dump'
+```
+
+Expect `Dumped spira → …` with a byte count, then `Backup copy OK: …`. A dump whose size drops by an
+order of magnitude is a broken backup that looks exactly like a working one — the byte count is logged
+on every run so that shows up.
+
+To prove the whole path without waiting for a scheduled run, restore the newest off-server dump into a
+scratch database:
+
+```bash
+ssh vps-debian 'ls -la <SPIRA_BACKUP_SERVER_PATH>'
 ```
 
 ## If it works in dev but not in prod

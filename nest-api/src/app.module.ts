@@ -1,8 +1,12 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
 import { AppController } from "./app.controller";
 import appConfig from "@config/app.config";
+import dbBackupConfig from "@config/db-backup.config";
+import sshBackupConfig from "@config/ssh-backup.config";
 import { validate } from "@config/env.validation";
+import { DbBackupModule } from "@infrastructure/db-backup/db-backup.module";
 import { RedisModule } from "@redis/redis.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { UsersModule } from "@users/users.module";
@@ -19,8 +23,10 @@ import { ViewsModule } from "@views/views.module";
       isGlobal: true,
       envFilePath: ".env",
       validate,
-      load: [appConfig],
+      load: [appConfig, dbBackupConfig, sshBackupConfig],
     }),
+    ScheduleModule.forRoot(),
+    DbBackupModule,
     RedisModule,
     PrismaModule,
     UsersModule,
