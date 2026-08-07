@@ -36,6 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <Providers initialUser={user}>
       <div className="flex h-screen min-h-0">
         <Sidebar
+          username={user.username}
           projects={projects}
           views={views}
         />

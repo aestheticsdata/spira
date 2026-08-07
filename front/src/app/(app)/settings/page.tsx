@@ -2,6 +2,7 @@ import { ChangePasswordForm } from "@app/(app)/settings/change-password-form";
 import { LabelList } from "@app/(app)/settings/label-list";
 import { TokenList } from "@app/(app)/settings/token-list";
 import { AppHeader } from "@components/shell/app-header";
+import { displayName, initials } from "@lib/account";
 import { serverFetch } from "@lib/server-api";
 
 import type { ApiTokenDto, AuthenticatedUserDto, LabelDto } from "@lib/api-types";
@@ -27,14 +28,6 @@ const MCP_TOOLS = [
  */
 const MCP_COMMAND = "claude mcp add spira -- node <spira>/mcp/dist/index.js";
 
-function initials(username: string): string {
-  const words = username.trim().split(/\s+/).filter(Boolean);
-  if (words.length > 1) {
-    return `${words[0][0]}${words[1][0]}`.toUpperCase();
-  }
-  return (words[0] ?? "?").slice(0, 2).toUpperCase();
-}
-
 export default async function SettingsPage() {
   const [user, labels, tokens] = await Promise.all([
     serverFetch<AuthenticatedUserDto>("/users/me"),
@@ -53,7 +46,7 @@ export default async function SettingsPage() {
           <div>
             <h1 className="text-22 font-semibold tracking-title text-ink-1">Settings</h1>
             <p className="mt-[9px] text-135 text-ink-5">
-              One account, no invites, no roles. Everything below is yours alone.
+              No invites, no roles. Everything below belongs to this account and is invisible to any other.
             </p>
           </div>
 
@@ -68,10 +61,9 @@ export default async function SettingsPage() {
                 {initials(user.username)}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-13 text-ink-2">{user.username}</div>
-                <div className="mt-0.5 text-115 text-ink-7">
-                  Seeded account · signup disabled · bcryptjs · session in Redis
-                </div>
+                <div className="text-13 text-ink-2">{displayName(user.username)}</div>
+                {/* The address you sign in with, which the name above drops. */}
+                <div className="mt-0.5 truncate text-115 text-ink-7">{user.username}</div>
               </div>
               <ChangePasswordForm />
             </div>

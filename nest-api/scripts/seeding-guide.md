@@ -1,24 +1,39 @@
 # Seeding guide — `scripts/seed.ts`
 
-Creates the workspace Spira needs to be usable at all: **the one account** (there is no signup UI),
-the six workflow states, the six labels, and the nine demo projects with their issues, epics and
-relations — the exact dataset the design handoff renders.
+Creates the workspace Spira needs to be usable at all: **an account** (there is no signup UI, but
+there is no limit on how many accounts a database holds), the six shared workflow states, the six
+labels, and the nine demo projects with their issues, epics and relations — the exact dataset the
+design handoff renders.
 
 It is safe to run **repeatedly**: every row is upserted on its natural key.
+
+## One account, one workspace
+
+Since COS-457 every account owns its content outright. `Project`, `Issue`, `Label`, `SavedView` and
+`ApiToken` all carry an `ownerId`, and every query in the API is filtered by the session's user, so
+two accounts in the same database never see each other's data.
+
+That makes seeding **per account**: `--username joe` builds joe's workspace and leaves everyone
+else's alone, including `--wipe`. Project keys and label names are unique *per owner*, so two
+accounts may each keep their own `PFA` project and their own `bug` label.
+
+`WorkflowState` is the deliberate exception — a fixed, shared palette with no owner. Nothing in the
+app lets an account customise it, so there is nothing to isolate, and `--wipe` no longer deletes it.
 
 ## Command
 
 ```bash
-pnpm seed -- [--username <name>] [--password <secret>] [--wipe]
+pnpm seed -- [--username <name>] [--password <secret>] [--wipe] [--empty]
 ```
 
 > The `--` is required so pnpm forwards the flags to the script.
 
 | Option       | Env           | Default                 | Description                                                     |
 | ------------ | ------------- | ----------------------- | --------------------------------------------------------------- |
-| `--username` | `SEED_USERNAME` | `cosmokaat`           | The account to seed. Also the login.                             |
+| `--username` | `SEED_USERNAME` | `cosmokaat@protonmail.com` | The account to seed. Also the login.                             |
 | `--password` | `SEED_PASSWORD` | —                     | Sets the account password. See below when omitted.               |
-| `--wipe`     | —             | off                     | Delete the workspace before seeding. The account row is kept.    |
+| `--wipe`     | —             | off                     | Delete **this account's** workspace before seeding. The account row and the shared states are kept. |
+| `--empty`    | —             | off                     | Account and shared states only — no demo projects, issues or labels. |
 | `--help`     | —             | —                       | Print the usage and exit without touching the database.          |
 
 Flags win over the environment, which wins over the default. Bad or missing arguments print the usage
@@ -35,7 +50,7 @@ There is no hardcoded default — every password is either given or generated.
 - **omitted, account already exists** → the stored hash is left alone. A routine re-seed never locks you
   out of the account it created last time.
 
-Minimum length when you pass one: 8 characters.
+Minimum length when you pass one: 6 characters.
 
 ## Two modes
 
@@ -48,11 +63,14 @@ natural key and updated in place:
 | --------------- | ----------------------------------------------------------- |
 | `User`          | `username`                                                   |
 | `WorkflowState` | `name` (the column has no unique index, so it is matched by hand) |
-| `Label`         | `name`                                                       |
-| `Project`       | `key`                                                        |
-| `Issue`         | `identifier`                                                 |
+| `Label`         | `(ownerId, name)`                                            |
+| `Project`       | `(ownerId, key)`                                             |
+| `Issue`         | `(ownerId, identifier)`                                      |
 | `IssueLabel`    | `(issueId, labelId)`                                         |
 | `IssueRelation` | `(fromIssueId, toIssueId, type)`                             |
+
+The `ownerId` in three of those keys is what makes a second account safe: seeding `joe` matches on
+joe's `PFA`, not on whoever else's `PFA` happens to exist.
 
 Rows you created through the app are untouched — the seeder only ever writes the identifiers listed in
 its own tables.
@@ -72,13 +90,31 @@ pnpm seed -- --wipe
 ```
 
 Deletes, in foreign-key-safe order: `IssueRelation`, `IssueLabel`, `Comment`, `Issue`, `SavedView`,
-`Project`, `WorkflowState`, `Label` — **then** rebuilds the whole workspace from the tables in the script.
+`Project`, `Label` — **then** rebuilds the whole workspace from the tables in the script.
 
-⚠️ This drops the **entire** workspace, including projects, issues and saved views you created yourself,
-not just the seeded rows.
+⚠️ This drops that account's **entire** workspace, including projects, issues and saved views you
+created yourself, not just the seeded rows.
+
+It is scoped to one account, though: `--username joe --wipe` cannot touch `cosmokaat@protonmail.com`'s data. Every
+delete is filtered by owner, directly or through its issue.
+
+`WorkflowState` is **no longer** in that list. It is shared by every account, so deleting it would
+either break another account's projects or — more likely — be refused outright by their foreign keys.
 
 The `User` row is deliberately **not** deleted: a rebuild must not invalidate the password a previous run
 printed. Pass `--password` alongside `--wipe` if you want a genuinely clean account.
+
+### `--empty` (an account with nothing in it)
+
+```bash
+pnpm seed -- --username cosmokaat@protonmail.com --wipe --empty
+```
+
+Seeds the account and the shared workflow states, and stops. No demo projects, issues or labels.
+
+This is what you want on the workspace that is about to receive the real Linear import: the importer
+maps onto the shared states but refuses to write into projects that already hold issues, so demo data
+is exactly what has to be gone first. See `import-guide.md`.
 
 To drop the schema itself as well, reset the database first and let migrations rebuild it:
 
@@ -89,7 +125,8 @@ pnpm seed                   # repopulates (a fresh account ⇒ a printed passwor
 
 ## What gets seeded
 
-- **1 user** — the only account; there is no signup route.
+- **1 user** — the account named by `--username`; there is no signup route, but there is no cap on
+  how many accounts a database holds. Each owns a private workspace.
 - **6 workflow states** — Backlog, Todo, In Progress, In Review, Done, Canceled, in that `position`
   order, with the design's colours. Shared by every project.
 - **6 labels** — Feature, Improvement, Bug, de-mock, Dashboard, design system.
@@ -115,7 +152,7 @@ Rows: { users: 1, states: 6, labels: 6, projects: 9, issues: 85, issueLabels: 62
   SPI  39 issues · next identifier SPI-40  Spira
   ...
 
-Account: cosmokaat@spira.local
+Account: cosmokaat@protonmail.com
 Password: unchanged — pass --password to set a new one.
 ```
 

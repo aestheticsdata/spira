@@ -71,6 +71,7 @@ interface IssueRefRow {
 
 interface ProjectLockRow {
   id: string;
+  ownerId: string;
   key: string;
   issueCounter: number;
 }
@@ -140,8 +141,8 @@ function isUniqueViolation(error: unknown): boolean {
 export class IssuesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: IssuesQueryDto): Promise<IssueListItemDto[]> {
-    const where: Prisma.IssueWhereInput = {};
+  async list(ownerId: string, query: IssuesQueryDto): Promise<IssueListItemDto[]> {
+    const where: Prisma.IssueWhereInput = { ownerId };
 
     if (query.includeArchived !== true) {
       where.archivedAt = null;
@@ -173,14 +174,14 @@ export class IssuesService {
       andClauses.push({ epicId: query.hasEpic ? { not: null } : null });
     }
     if (query.epic) {
-      const epicId = await this.resolveIssueId(query.epic);
+      const epicId = await this.resolveIssueId(ownerId, query.epic);
       if (!epicId) {
         return [];
       }
       andClauses.push({ epicId });
     }
     if (query.excludeEpic) {
-      const epicId = await this.resolveIssueId(query.excludeEpic);
+      const epicId = await this.resolveIssueId(ownerId, query.excludeEpic);
       // An identifier that resolves to nothing excludes nothing — unlike `epic`
       // above, where an unresolvable epic has no children by definition.
       if (epicId) {
@@ -215,15 +216,15 @@ export class IssuesService {
       orderBy: orderByFor(query.orderBy ?? "manual"),
     });
 
-    return this.toListItems(rows);
+    return this.toListItems(ownerId, rows);
   }
 
-  async findByIdentifier(rawIdentifier: string): Promise<IssueDetailDto> {
-    const { issue, requestedIdentifier } = await this.requireIssue(rawIdentifier);
-    return this.toDetail(issue, requestedIdentifier);
+  async findByIdentifier(ownerId: string, rawIdentifier: string): Promise<IssueDetailDto> {
+    const { issue, requestedIdentifier } = await this.requireIssue(ownerId, rawIdentifier);
+    return this.toDetail(ownerId, issue, requestedIdentifier);
   }
 
-  async create(dto: CreateIssueDto): Promise<IssueDetailDto> {
+  async create(ownerId: string, dto: CreateIssueDto): Promise<IssueDetailDto> {
     const projectKey = dto.projectKey.toUpperCase();
     const isEpic = dto.isEpic ?? false;
     const epicId = dto.epicId ?? null;
@@ -238,7 +239,8 @@ export class IssuesService {
       // The row lock is what makes concurrent creates safe: the second
       // transaction waits here and reads the counter the first one wrote.
       const locked = await tx.$queryRaw<ProjectLockRow[]>`
-        SELECT id, \`key\`, issueCounter FROM Project WHERE \`key\` = ${projectKey} FOR UPDATE
+        SELECT id, ownerId, \`key\`, issueCounter FROM Project
+        WHERE ownerId = ${ownerId} AND \`key\` = ${projectKey} FOR UPDATE
       `;
       const project = locked[0];
       if (!project) {
@@ -247,9 +249,9 @@ export class IssuesService {
 
       const state = await this.resolveState(tx, dto.stateId);
       if (epicId) {
-        await this.assertEpicUsable(tx, epicId, project.id, null);
+        await this.assertEpicUsable(tx, ownerId, epicId, project.id, null);
       }
-      await this.assertLabelsExist(tx, labelIds);
+      await this.assertLabelsExist(tx, ownerId, labelIds);
 
       const number = Number(project.issueCounter) + 1;
       const identifier = formatIdentifier(project.key, number);
@@ -259,6 +261,10 @@ export class IssuesService {
       return tx.issue.create({
         data: {
           id: randomUUID(),
+          // Denormalised from the project the lock just pinned to this caller,
+          // rather than copied from the parameter: the column has to track
+          // `project.ownerId` for the per-owner identifier uniques to hold.
+          ownerId: project.ownerId,
           projectId: project.id,
           number,
           identifier,
@@ -276,11 +282,11 @@ export class IssuesService {
       });
     });
 
-    return this.detail(created.id, created.identifier);
+    return this.detail(ownerId, created.id, created.identifier);
   }
 
-  async update(rawIdentifier: string, dto: UpdateIssueDto): Promise<IssueDetailDto> {
-    const { issue, requestedIdentifier } = await this.requireIssueForWrite(rawIdentifier);
+  async update(ownerId: string, rawIdentifier: string, dto: UpdateIssueDto): Promise<IssueDetailDto> {
+    const { issue, requestedIdentifier } = await this.requireIssueForWrite(ownerId, rawIdentifier);
 
     const nextIsEpic = dto.isEpic ?? issue.isEpic;
     const nextEpicId = dto.epicId !== undefined ? dto.epicId : issue.epicId;
@@ -299,7 +305,7 @@ export class IssuesService {
     }
 
     if (dto.isEpic === false && issue.isEpic) {
-      const children = await this.prisma.issue.count({ where: { epicId: issue.id, archivedAt: null } });
+      const children = await this.prisma.issue.count({ where: { ownerId, epicId: issue.id, archivedAt: null } });
       if (children > 0) {
         throw new BadRequestException(
           `${issue.identifier} still has ${children} child ${children === 1 ? "issue" : "issues"} — move them out ` +
@@ -309,12 +315,12 @@ export class IssuesService {
     }
 
     if (nextEpicId !== null && nextEpicId !== issue.epicId) {
-      await this.assertEpicUsable(this.prisma, nextEpicId, issue.projectId, issue.id);
+      await this.assertEpicUsable(this.prisma, ownerId, nextEpicId, issue.projectId, issue.id);
     }
 
     const labelIds = dto.labelIds === undefined ? null : uniqueIds(dto.labelIds);
     if (labelIds) {
-      await this.assertLabelsExist(this.prisma, labelIds);
+      await this.assertLabelsExist(this.prisma, ownerId, labelIds);
     }
 
     const data: Prisma.IssueUncheckedUpdateInput = {};
@@ -352,20 +358,22 @@ export class IssuesService {
 
     await this.prisma.issue.update({ where: { id: issue.id }, data });
 
-    return this.detail(issue.id, requestedIdentifier);
+    return this.detail(ownerId, issue.id, requestedIdentifier);
   }
 
-  async archive(rawIdentifier: string): Promise<{ ok: boolean }> {
-    const id = await this.requireIssueId(rawIdentifier);
+  async archive(ownerId: string, rawIdentifier: string): Promise<{ ok: boolean }> {
+    const id = await this.requireIssueId(ownerId, rawIdentifier);
     // The guard rides in the WHERE clause: a repeated DELETE must not move the
     // timestamp the first one wrote, the same rule the projects service keeps.
-    await this.prisma.issue.updateMany({ where: { id, archivedAt: null }, data: { archivedAt: new Date() } });
+    await this.prisma.issue.updateMany({ where: { id, ownerId, archivedAt: null }, data: { archivedAt: new Date() } });
     return { ok: true };
   }
 
-  async addRelation(rawIdentifier: string, dto: CreateRelationDto): Promise<IssueDetailDto> {
-    const { issue, requestedIdentifier } = await this.requireIssueForWrite(rawIdentifier);
-    const targetId = await this.requireIssueId(dto.targetIdentifier);
+  async addRelation(ownerId: string, rawIdentifier: string, dto: CreateRelationDto): Promise<IssueDetailDto> {
+    const { issue, requestedIdentifier } = await this.requireIssueForWrite(ownerId, rawIdentifier);
+    // Both ends resolve through the owner-scoped lookups, so a relation can
+    // never reach across accounts.
+    const targetId = await this.requireIssueId(ownerId, dto.targetIdentifier);
 
     if (targetId === issue.id) {
       throw new BadRequestException("An issue cannot be related to itself");
@@ -399,12 +407,15 @@ export class IssuesService {
       }
     }
 
-    return this.detail(issue.id, requestedIdentifier);
+    return this.detail(ownerId, issue.id, requestedIdentifier);
   }
 
-  async removeRelation(rawIdentifier: string, relationId: string): Promise<IssueDetailDto> {
-    const { issue, requestedIdentifier } = await this.requireIssueForWrite(rawIdentifier);
+  async removeRelation(ownerId: string, rawIdentifier: string, relationId: string): Promise<IssueDetailDto> {
+    const { issue, requestedIdentifier } = await this.requireIssueForWrite(ownerId, rawIdentifier);
 
+    // IssueRelation carries no ownerId of its own: requiring the row to touch
+    // the owner-scoped issue below is what keeps one account off another's
+    // relations, and an id that belongs to someone else reads as a 404.
     const relation = await this.prisma.issueRelation.findUnique({
       where: { id: relationId },
       select: { id: true, fromIssueId: true, toIssueId: true },
@@ -416,7 +427,7 @@ export class IssuesService {
 
     await this.prisma.issueRelation.delete({ where: { id: relation.id } });
 
-    return this.detail(issue.id, requestedIdentifier);
+    return this.detail(ownerId, issue.id, requestedIdentifier);
   }
 
   /**
@@ -424,19 +435,27 @@ export class IssuesService {
    * never be shadowed by another issue's Linear id. The lookup is
    * case-insensitive because the requested value is uppercased first, which is
    * the shape both columns are written in.
+   *
+   * Both columns are unique per owner rather than globally, so `ownerId` is part
+   * of every lookup — and an issue belonging to another account simply does not
+   * resolve, which is how it comes back as a 404 rather than a 403.
    */
   private async findByEither<T>(
+    ownerId: string,
     identifier: string,
-    read: (where: { identifier: string } | { legacyIdentifier: string }) => Promise<T | null>,
+    read: (where: Prisma.IssueWhereInput) => Promise<T | null>,
   ): Promise<T | null> {
-    return (await read({ identifier })) ?? (await read({ legacyIdentifier: identifier }));
+    return (await read({ ownerId, identifier })) ?? (await read({ ownerId, legacyIdentifier: identifier }));
   }
 
-  private async requireIssue(rawIdentifier: string): Promise<{ issue: IssueDetailRow; requestedIdentifier: string }> {
+  private async requireIssue(
+    ownerId: string,
+    rawIdentifier: string,
+  ): Promise<{ issue: IssueDetailRow; requestedIdentifier: string }> {
     const requestedIdentifier = normaliseIdentifier(rawIdentifier);
 
-    const issue = await this.findByEither(requestedIdentifier, (where) =>
-      this.prisma.issue.findUnique({ where, include: issueDetailInclude }),
+    const issue = await this.findByEither(ownerId, requestedIdentifier, (where) =>
+      this.prisma.issue.findFirst({ where, include: issueDetailInclude }),
     );
 
     if (!issue) {
@@ -448,12 +467,13 @@ export class IssuesService {
 
   /** The same resolution, reading only the columns a write path branches on. */
   private async requireIssueForWrite(
+    ownerId: string,
     rawIdentifier: string,
   ): Promise<{ issue: IssueWriteRow; requestedIdentifier: string }> {
     const requestedIdentifier = normaliseIdentifier(rawIdentifier);
 
-    const issue = await this.findByEither(requestedIdentifier, (where) =>
-      this.prisma.issue.findUnique({ where, select: issueWriteSelect }),
+    const issue = await this.findByEither(ownerId, requestedIdentifier, (where) =>
+      this.prisma.issue.findFirst({ where, select: issueWriteSelect }),
     );
 
     if (!issue) {
@@ -463,18 +483,18 @@ export class IssuesService {
     return { issue, requestedIdentifier };
   }
 
-  private async resolveIssueId(rawIdentifier: string): Promise<string | null> {
+  private async resolveIssueId(ownerId: string, rawIdentifier: string): Promise<string | null> {
     const identifier = normaliseIdentifier(rawIdentifier);
 
-    const issue = await this.findByEither(identifier, (where) =>
-      this.prisma.issue.findUnique({ where, select: { id: true } }),
+    const issue = await this.findByEither(ownerId, identifier, (where) =>
+      this.prisma.issue.findFirst({ where, select: { id: true } }),
     );
 
     return issue?.id ?? null;
   }
 
-  private async requireIssueId(rawIdentifier: string): Promise<string> {
-    const id = await this.resolveIssueId(rawIdentifier);
+  private async requireIssueId(ownerId: string, rawIdentifier: string): Promise<string> {
+    const id = await this.resolveIssueId(ownerId, rawIdentifier);
     if (!id) {
       throw new NotFoundException(`Issue ${normaliseIdentifier(rawIdentifier)} not found`);
     }
@@ -506,6 +526,7 @@ export class IssuesService {
 
   private async assertEpicUsable(
     client: IssueClient,
+    ownerId: string,
     epicId: string,
     projectId: string,
     issueId: string | null,
@@ -514,8 +535,10 @@ export class IssuesService {
       throw new BadRequestException("An issue cannot be its own epic");
     }
 
-    const epic = await client.issue.findUnique({
-      where: { id: epicId },
+    // Scoped, so another account's epic reads as one that does not exist —
+    // which is also what stops the parent link from crossing accounts.
+    const epic = await client.issue.findFirst({
+      where: { id: epicId, ownerId },
       select: { id: true, identifier: true, isEpic: true, projectId: true },
     });
 
@@ -530,31 +553,34 @@ export class IssuesService {
     }
   }
 
-  private async assertLabelsExist(client: IssueClient, labelIds: string[]): Promise<void> {
+  private async assertLabelsExist(client: IssueClient, ownerId: string, labelIds: string[]): Promise<void> {
     if (labelIds.length === 0) {
       return;
     }
 
-    const found = await client.label.findMany({ where: { id: { in: labelIds } }, select: { id: true } });
+    const found = await client.label.findMany({ where: { id: { in: labelIds }, ownerId }, select: { id: true } });
     if (found.length !== labelIds.length) {
       const known = new Set(found.map((label) => label.id));
       throw new BadRequestException(`Unknown labels: ${labelIds.filter((id) => !known.has(id)).join(", ")}`);
     }
   }
 
-  private async detail(id: string, requestedIdentifier: string): Promise<IssueDetailDto> {
-    const issue = await this.prisma.issue.findUnique({ where: { id }, include: issueDetailInclude });
+  private async detail(ownerId: string, id: string, requestedIdentifier: string): Promise<IssueDetailDto> {
+    const issue = await this.prisma.issue.findFirst({ where: { id, ownerId }, include: issueDetailInclude });
     if (!issue) {
       throw new NotFoundException(`Issue ${requestedIdentifier} not found`);
     }
 
-    return this.toDetail(issue, requestedIdentifier);
+    return this.toDetail(ownerId, issue, requestedIdentifier);
   }
 
-  private async toDetail(issue: IssueDetailRow, requestedIdentifier: string): Promise<IssueDetailDto> {
+  private async toDetail(ownerId: string, issue: IssueDetailRow, requestedIdentifier: string): Promise<IssueDetailDto> {
     const [progress, labelCounts] = await Promise.all([
-      this.epicProgress(issue.isEpic ? [issue.id] : []),
-      this.labelCounts(issue.labels.map((entry) => entry.labelId)),
+      this.epicProgress(ownerId, issue.isEpic ? [issue.id] : []),
+      this.labelCounts(
+        ownerId,
+        issue.labels.map((entry) => entry.labelId),
+      ),
     ]);
 
     const blocks: RelatedIssueDto[] = [];
@@ -587,13 +613,13 @@ export class IssuesService {
     };
   }
 
-  private async toListItems(rows: IssueListRow[]): Promise<IssueListItemDto[]> {
+  private async toListItems(ownerId: string, rows: IssueListRow[]): Promise<IssueListItemDto[]> {
     const epicIds = rows.filter((row) => row.isEpic).map((row) => row.id);
     const labelIds = uniqueIds(rows.flatMap((row) => row.labels.map((entry) => entry.labelId)));
 
     const [progress, labelCounts, relationCounts] = await Promise.all([
-      this.epicProgress(epicIds),
-      this.labelCounts(labelIds),
+      this.epicProgress(ownerId, epicIds),
+      this.labelCounts(ownerId, labelIds),
       this.relationCounts(rows.map((row) => row.id)),
     ]);
 
@@ -653,7 +679,7 @@ export class IssuesService {
    * One groupBy for every epic on the page — the alternative is a count query
    * per epic row. Archived children count for neither side of the fraction.
    */
-  private async epicProgress(epicIds: string[]): Promise<Map<string, EpicProgressDto>> {
+  private async epicProgress(ownerId: string, epicIds: string[]): Promise<Map<string, EpicProgressDto>> {
     const progress = new Map<string, EpicProgressDto>(epicIds.map((id) => [id, { done: 0, total: 0 }]));
     if (epicIds.length === 0) {
       return progress;
@@ -662,7 +688,7 @@ export class IssuesService {
     const [rows, completedStates] = await Promise.all([
       this.prisma.issue.groupBy({
         by: ["epicId", "stateId"],
-        where: { epicId: { in: epicIds }, archivedAt: null },
+        where: { ownerId, epicId: { in: epicIds }, archivedAt: null },
         _count: { _all: true },
       }),
       this.prisma.workflowState.findMany({ where: { type: STATE_COMPLETED }, select: { id: true } }),
@@ -686,7 +712,7 @@ export class IssuesService {
     return progress;
   }
 
-  private async labelCounts(labelIds: string[]): Promise<Map<string, number>> {
+  private async labelCounts(ownerId: string, labelIds: string[]): Promise<Map<string, number>> {
     const unique = uniqueIds(labelIds);
     if (unique.length === 0) {
       return new Map();
@@ -694,7 +720,7 @@ export class IssuesService {
 
     const rows = await this.prisma.issueLabel.groupBy({
       by: ["labelId"],
-      where: { labelId: { in: unique }, issue: { archivedAt: null } },
+      where: { labelId: { in: unique }, issue: { ownerId, archivedAt: null } },
       _count: { _all: true },
     });
 
@@ -704,6 +730,9 @@ export class IssuesService {
   /**
    * Two groupBys for every issue on the page, not one per row. `related` never
    * counts here — it carries no direction, so it is not "stuck" information.
+   *
+   * No ownerId: IssueRelation has none, and the ids handed in are the caller's
+   * own rows, so the `in` clause is already the scope.
    */
   private async relationCounts(
     issueIds: string[],

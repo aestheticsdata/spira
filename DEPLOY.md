@@ -171,11 +171,43 @@ Then, once the API is on the server for the first time:
 
 ```bash
 export PATH="$HOME/.local/share/pnpm:$PATH"   # pnpm is not on a non-interactive PATH
-cd /var/www/spira/nest-api && pnpm migrate:deploy && pnpm seed
+cd /var/www/spira/nest-api && pnpm migrate:deploy && pnpm seed -- --username cosmokaat@protonmail.com --empty
 ```
 
-The seeder prints the generated password once. There is no signup UI — this is the only way an account
-comes into existence.
+The seeder prints the generated password once. There is no signup UI — running the seeder is the only
+way an account comes into existence — but there is no cap on how many accounts a database holds
+(COS-457): each owns a private workspace, and seeding a second one leaves the first untouched.
+
+`--empty` creates the account and the shared workflow states without the demo projects and issues,
+which is what production wants: the demo data would otherwise have to be deleted again before the
+Linear import could run. Drop the flag to get the demo workspace on a scratch box.
+
+### The demo account
+
+Production also carries a second, throwaway account holding the demo workspace, so the deployed app
+can be clicked around without touching real tickets:
+
+```bash
+pnpm seed -- --username dragon@ultrasecure.com
+```
+
+No `--empty` here — the demo data is the entire point of this one. It is the same mock identity the
+other fleet apps use, which is why it is not named after Spira.
+
+**Give it a real password.** Omitting `--password` mints a random 20-character one and prints it
+once, which is what you want: this is a login on a public host, and Spira's rate limiter (five
+attempts, then an exponential lockout) buys time against a weak password rather than excusing one.
+
+Its workspace is invisible to the real account and vice versa — the isolation is enforced per query,
+not by convention (COS-457) — so the only thing this account costs is one more credential to keep.
+
+### Login address vs. displayed name
+
+The login **is** the email: `cosmokaat@protonmail.com`, `dragon@ultrasecure.com`. The app displays
+only the local part — `cosmokaat`, `dragon` — in the sidebar's user menu and on the settings page,
+with the full address shown inside the menu and under the account name, since that is the credential.
+Nothing stores the two separately; `displayName()` in `front/src/lib/account.ts` derives one from the
+other, and a bare username with no `@` (local dev's `joe`) simply displays as itself.
 
 ## Deploying
 

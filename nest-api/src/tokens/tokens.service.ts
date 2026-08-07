@@ -27,8 +27,9 @@ export class TokensService {
    * has been able to reach my data", and a revoked token that vanishes takes its `lastUsedAt` with it
    * — which is exactly the evidence you want after revoking one in a hurry.
    */
-  async findAll(): Promise<ApiTokenDto[]> {
+  async findAll(ownerId: string): Promise<ApiTokenDto[]> {
     const tokens = await this.prisma.apiToken.findMany({
+      where: { ownerId },
       select: TOKEN_SELECT,
       orderBy: { createdAt: "desc" },
     });
@@ -36,11 +37,11 @@ export class TokensService {
     return tokens.map((token) => this.toDto(token));
   }
 
-  async create(dto: CreateTokenDto): Promise<CreatedApiTokenDto> {
+  async create(ownerId: string, dto: CreateTokenDto): Promise<CreatedApiTokenDto> {
     const { raw, hash, suffix } = createApiToken();
 
     const token = await this.prisma.apiToken.create({
-      data: { id: randomUUID(), name: dto.name, tokenHash: hash, tokenSuffix: suffix },
+      data: { id: randomUUID(), ownerId, name: dto.name, tokenHash: hash, tokenSuffix: suffix },
       select: TOKEN_SELECT,
     });
 
@@ -53,23 +54,28 @@ export class TokensService {
    * record that the token existed and when it was last used; the guard treats revoked and unknown
    * identically, so nothing is gained by forgetting it.
    */
-  async revoke(id: string): Promise<ApiTokenDto> {
-    const existing = await this.prisma.apiToken.findUnique({ where: { id }, select: { revokedAt: true } });
+  async revoke(ownerId: string, id: string): Promise<ApiTokenDto> {
+    // Scoped read first: another account's token must be indistinguishable from one that never existed.
+    const existing = await this.prisma.apiToken.findFirst({ where: { id, ownerId }, select: { revokedAt: true } });
     if (!existing) {
       throw new NotFoundException("Token not found");
     }
 
     // Re-revoking must not move the timestamp: when it was revoked is the fact worth keeping.
     if (existing.revokedAt !== null) {
-      const unchanged = await this.prisma.apiToken.findUniqueOrThrow({ where: { id }, select: TOKEN_SELECT });
+      const unchanged = await this.prisma.apiToken.findFirstOrThrow({ where: { id, ownerId }, select: TOKEN_SELECT });
       return this.toDto(unchanged);
     }
 
-    const token = await this.prisma.apiToken.update({
-      where: { id },
+    const revoked = await this.prisma.apiToken.updateMany({
+      where: { id, ownerId },
       data: { revokedAt: new Date() },
-      select: TOKEN_SELECT,
     });
+    if (revoked.count === 0) {
+      throw new NotFoundException("Token not found");
+    }
+
+    const token = await this.prisma.apiToken.findFirstOrThrow({ where: { id, ownerId }, select: TOKEN_SELECT });
 
     return this.toDto(token);
   }

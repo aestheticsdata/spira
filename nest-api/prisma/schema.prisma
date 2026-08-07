@@ -9,7 +9,9 @@ datasource db {
   provider = "mysql"
 }
 
-/// Exactly one row. Seeded by `pnpm seed` — there is no signup UI.
+/// One row per account. Created by `pnpm seed` — there is no signup UI, but
+/// there is no cap either: every account owns a workspace of its own, private
+/// to it (COS-457).
 ///
 /// Identified by a username rather than an email: nothing here sends mail, and
 /// the design's settings screen shows a bare name. One column, and a login the
@@ -19,17 +21,25 @@ model User {
   username     String   @unique @db.VarChar(60)
   passwordHash String   @db.VarChar(255)
   createdAt    DateTime @default(now())
+
+  projects   Project[]
+  issues     Issue[]
+  labels     Label[]
+  savedViews SavedView[]
+  apiTokens  ApiToken[]
 }
 
 model Project {
-  id      String  @id @db.Char(36)
-  /// "PFA", "3DE", "SPI" — drives every identifier in the project.
-  key     String  @unique @db.VarChar(5)
-  name    String  @db.VarChar(120)
+  id          String  @id @db.Char(36)
+  ownerId     String  @db.Char(36)
+  /// "PFA", "3DE", "SPI" — drives every identifier in the project. Unique per
+  /// owner, not globally: two accounts may each keep their own `PFA`.
+  key         String  @db.VarChar(5)
+  name        String  @db.VarChar(120)
   /// Material Symbols Rounded ligature name, or a single emoji character.
-  icon    String? @db.VarChar(40)
-  color   String? @db.VarChar(9)
-  summary String? @db.VarChar(255)
+  icon        String? @db.VarChar(40)
+  color       String? @db.VarChar(9)
+  summary     String? @db.VarChar(255)
   /// markdown
   description String? @db.Text
 
@@ -46,10 +56,12 @@ model Project {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  owner  User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   status WorkflowState @relation(fields: [statusId], references: [id])
   issues Issue[]
   views  SavedView[]
 
+  @@unique([ownerId, key])
   @@index([statusId])
 }
 
@@ -67,21 +79,31 @@ model WorkflowState {
 }
 
 model Label {
-  id     String       @id @db.Char(36)
-  name   String       @unique @db.VarChar(60)
-  color  String       @db.VarChar(9)
+  id      String @id @db.Char(36)
+  ownerId String @db.Char(36)
+  name    String @db.VarChar(60)
+  color   String @db.VarChar(9)
+
+  owner  User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   issues IssueLabel[]
+
+  @@unique([ownerId, name])
 }
 
 model Issue {
   id        String @id @db.Char(36)
+  /// Denormalised from `project.ownerId`, and kept in step with it on write.
+  /// Carried here rather than joined for two reasons: the identifier uniques
+  /// below have to be per-owner, and the FULLTEXT search runs as raw SQL against
+  /// this table alone — a join it would otherwise have to grow.
+  ownerId   String @db.Char(36)
   projectId String @db.Char(36)
   number    Int
 
   /// "PFA-12" — stored, not derived, so a project re-key never moves it.
-  identifier       String  @unique @db.VarChar(20)
+  identifier       String  @db.VarChar(20)
   /// "COS-177" — the Linear identifier this issue carried before the migration.
-  legacyIdentifier String? @unique @db.VarChar(20)
+  legacyIdentifier String? @db.VarChar(20)
 
   title       String  @db.VarChar(255)
   /// markdown
@@ -103,10 +125,11 @@ model Issue {
   canceledAt  DateTime?
   archivedAt  DateTime?
 
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  state   WorkflowState @relation(fields: [stateId], references: [id])
-  epic    Issue?        @relation("EpicChildren", fields: [epicId], references: [id], onDelete: SetNull)
-  children Issue[]      @relation("EpicChildren")
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  state    WorkflowState @relation(fields: [stateId], references: [id])
+  epic     Issue?        @relation("EpicChildren", fields: [epicId], references: [id], onDelete: SetNull)
+  children Issue[]       @relation("EpicChildren")
 
   labels        IssueLabel[]
   relationsFrom IssueRelation[] @relation("RelationFrom")
@@ -114,6 +137,8 @@ model Issue {
   comments      Comment[]
 
   @@unique([projectId, number])
+  @@unique([ownerId, identifier])
+  @@unique([ownerId, legacyIdentifier])
   @@index([stateId])
   @@index([epicId])
   @@index([projectId, sortOrder])
@@ -153,9 +178,10 @@ model IssueRelation {
 
 model SavedView {
   id        String  @id @db.Char(36)
+  ownerId   String  @db.Char(36)
   name      String  @db.VarChar(80)
   icon      String? @db.VarChar(40)
-  /// null = workspace-wide
+  /// null = workspace-wide — meaning the owner's whole workspace, not everyone's.
   projectId String? @db.Char(36)
   /// The list's URL query string, stored whole and canonical: filters,
   /// grouping, ordering and columns, in exactly the keys the address bar
@@ -168,9 +194,11 @@ model SavedView {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+  @@index([ownerId])
 }
 
 /// The raw token is shown once at creation and never stored. `tokenHash` is a
@@ -178,16 +206,24 @@ model SavedView {
 /// low-entropy secret for a slow KDF to protect, and bcrypt's cost would be paid
 /// on every single authenticated request rather than once per login.
 model ApiToken {
-  id         String    @id @db.Char(36)
-  name       String    @db.VarChar(80)
-  tokenHash  String    @unique @db.VarChar(255)
+  id          String    @id @db.Char(36)
+  ownerId     String    @db.Char(36)
+  name        String    @db.VarChar(80)
+  /// Globally unique, unlike the other per-owner uniques: the guard looks a
+  /// token up by hash alone, before it knows whose it is — that lookup is how
+  /// the owner is established.
+  tokenHash   String    @unique @db.VarChar(255)
   /// Last four characters of the raw token, so a row in the list is identifiable
   /// — `spira_pat_••••8f2c` in the design. Four hex characters of a 256-bit
   /// secret narrow nothing.
-  tokenSuffix String   @db.VarChar(8)
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
+  tokenSuffix String    @db.VarChar(8)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
 }
 
 /// Read by nothing in v1. Populated only if the optional connector side-file is

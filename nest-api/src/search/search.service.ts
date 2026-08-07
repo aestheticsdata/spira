@@ -43,7 +43,7 @@ function toSearchResult(row: IssueRow, matchedOn: SearchMatch): SearchResultDto 
 export class SearchService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async search(dto: SearchQueryDto): Promise<SearchResponseDto> {
+  async search(ownerId: string, dto: SearchQueryDto): Promise<SearchResponseDto> {
     const term = dto.q.trim();
     const limit = dto.limit ?? SEARCH_LIMIT_DEFAULT;
 
@@ -71,11 +71,11 @@ export class SearchService {
     // issue whose URL opens fine is the worse lie. The row carries `archived` so the front says so.
     const [exact, legacy] = await Promise.all([
       this.prisma.issue.findFirst({
-        where: { identifier: identifierTerm },
+        where: { ownerId, identifier: identifierTerm },
         select: ISSUE_SELECT,
       }),
       this.prisma.issue.findFirst({
-        where: { legacyIdentifier: identifierTerm },
+        where: { ownerId, legacyIdentifier: identifierTerm },
         select: ISSUE_SELECT,
       }),
     ]);
@@ -92,13 +92,13 @@ export class SearchService {
     if (legacy) push(legacy, "legacy");
 
     if (results.length < limit) {
-      for (const row of await this.prefixMatches(identifierTerm, limit)) {
+      for (const row of await this.prefixMatches(ownerId, identifierTerm, limit)) {
         push(row, row.identifier.startsWith(identifierTerm) ? "identifier" : "legacy");
       }
     }
 
     if (results.length < limit) {
-      for (const row of await this.textMatches(term, limit)) {
+      for (const row of await this.textMatches(ownerId, term, limit)) {
         push(row, "text");
       }
     }
@@ -106,9 +106,10 @@ export class SearchService {
     return { legacyResolved, results };
   }
 
-  private prefixMatches(identifierTerm: string, limit: number): Promise<IssueRow[]> {
+  private prefixMatches(ownerId: string, identifierTerm: string, limit: number): Promise<IssueRow[]> {
     return this.prisma.issue.findMany({
       where: {
+        ownerId,
         archivedAt: null,
         OR: [{ identifier: { startsWith: identifierTerm } }, { legacyIdentifier: { startsWith: identifierTerm } }],
       },
@@ -118,19 +119,19 @@ export class SearchService {
     });
   }
 
-  private async textMatches(term: string, limit: number): Promise<IssueRow[]> {
+  private async textMatches(ownerId: string, term: string, limit: number): Promise<IssueRow[]> {
     if (term.length >= MIN_FULLTEXT_TERM) {
-      const ids = await this.fullTextIds(term, limit);
+      const ids = await this.fullTextIds(ownerId, term, limit);
       // `ids?.length` rather than `ids`: an empty array is a FULLTEXT pass that ran and matched
       // nothing, and `[]` being truthy made this return it as the final answer — the LIKE fallback
       // below was unreachable for any term the index simply did not hit. FULLTEXT matching nothing is
       // not the same fact as nothing matching: it tokenises on non-word characters, so `COS-177` is
       // indexed as `COS` and `177`, and a substring living inside a longer word is invisible to it.
       if (ids?.length) {
-        return this.hydrate(ids);
+        return this.hydrate(ownerId, ids);
       }
     }
-    return this.likeMatches(term, limit);
+    return this.likeMatches(ownerId, term, limit);
   }
 
   /**
@@ -139,12 +140,13 @@ export class SearchService {
    * falls back to LIKE. The index is `@@fulltext` on the Issue model — it used
    * to be appended by hand, which is how an unrelated migration once dropped it.
    */
-  private async fullTextIds(term: string, limit: number): Promise<string[] | null> {
+  private async fullTextIds(ownerId: string, term: string, limit: number): Promise<string[] | null> {
     try {
       const rows = await this.prisma.$queryRaw<{ id: string; score: number }[]>`
         SELECT id, MATCH(title, description) AGAINST (${term} IN NATURAL LANGUAGE MODE) AS score
         FROM Issue
-        WHERE archivedAt IS NULL
+        WHERE ownerId = ${ownerId}
+          AND archivedAt IS NULL
           AND MATCH(title, description) AGAINST (${term} IN NATURAL LANGUAGE MODE)
         ORDER BY score DESC
         LIMIT ${limit}
@@ -155,9 +157,10 @@ export class SearchService {
     }
   }
 
-  private likeMatches(term: string, limit: number): Promise<IssueRow[]> {
+  private likeMatches(ownerId: string, term: string, limit: number): Promise<IssueRow[]> {
     return this.prisma.issue.findMany({
       where: {
+        ownerId,
         archivedAt: null,
         OR: [{ title: { contains: term } }, { description: { contains: term } }],
       },
@@ -168,12 +171,12 @@ export class SearchService {
   }
 
   /** Re-reads the raw hits through Prisma, restoring the relevance order `IN (...)` loses. */
-  private async hydrate(ids: string[]): Promise<IssueRow[]> {
+  private async hydrate(ownerId: string, ids: string[]): Promise<IssueRow[]> {
     if (ids.length === 0) {
       return [];
     }
 
-    const rows = await this.prisma.issue.findMany({ where: { id: { in: ids } }, select: ISSUE_SELECT });
+    const rows = await this.prisma.issue.findMany({ where: { ownerId, id: { in: ids } }, select: ISSUE_SELECT });
     const byId = new Map(rows.map((row) => [row.id, row]));
 
     return ids.map((id) => byId.get(id)).filter((row): row is IssueRow => row !== undefined);

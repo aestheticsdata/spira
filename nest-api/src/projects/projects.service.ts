@@ -96,25 +96,28 @@ function toProjectDto(project: ProjectRow, counts: IssueCounts): ProjectDto {
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(includeArchived: boolean): Promise<ProjectListItemDto[]> {
+  async findAll(ownerId: string, includeArchived: boolean): Promise<ProjectListItemDto[]> {
     const projects = await this.prisma.project.findMany({
-      where: includeArchived ? {} : { archivedAt: null },
+      where: includeArchived ? { ownerId } : { ownerId, archivedAt: null },
       include: { status: true },
       orderBy: [{ position: "asc" }, { name: "asc" }],
     });
 
-    const counts = await this.loadCounts(projects.map((project) => project.id));
+    const counts = await this.loadCounts(
+      ownerId,
+      projects.map((project) => project.id),
+    );
     return projects.map((project) => toProjectListItemDto(project, counts.get(project.id) ?? NO_ISSUES));
   }
 
-  async findByKey(key: string): Promise<ProjectDto> {
-    const project = await this.loadByKey(key);
-    const counts = await this.loadCounts([project.id]);
+  async findByKey(ownerId: string, key: string): Promise<ProjectDto> {
+    const project = await this.loadByKey(ownerId, key);
+    const counts = await this.loadCounts(ownerId, [project.id]);
     return toProjectDto(project, counts.get(project.id) ?? NO_ISSUES);
   }
 
-  async suggestKey(name: string): Promise<{ key: string }> {
-    const projects = await this.prisma.project.findMany({ select: { key: true } });
+  async suggestKey(ownerId: string, name: string): Promise<{ key: string }> {
+    const projects = await this.prisma.project.findMany({ where: { ownerId }, select: { key: true } });
     return {
       key: suggestProjectKey(
         name,
@@ -123,16 +126,17 @@ export class ProjectsService {
     };
   }
 
-  async create(dto: CreateProjectDto): Promise<ProjectDto> {
+  async create(ownerId: string, dto: CreateProjectDto): Promise<ProjectDto> {
     const key = normaliseProjectKey(dto.key);
     this.assertKeyIsUsable(key);
-    await this.assertKeyIsFree(key);
+    await this.assertKeyIsFree(ownerId, key);
 
     const statusId = await this.resolveStatusId(dto.statusId);
 
     const project = await this.prisma.project.create({
       data: {
         id: randomUUID(),
+        ownerId,
         key,
         name: dto.name,
         icon: dto.icon ?? null,
@@ -150,15 +154,15 @@ export class ProjectsService {
     return toProjectDto(project, NO_ISSUES);
   }
 
-  async update(key: string, dto: UpdateProjectDto): Promise<ProjectDto> {
-    const existing = await this.loadByKey(key);
+  async update(ownerId: string, key: string, dto: UpdateProjectDto): Promise<ProjectDto> {
+    const existing = await this.loadByKey(ownerId, key);
 
     let nextKey = existing.key;
     if (dto.key) {
       const requested = normaliseProjectKey(dto.key);
       if (requested !== existing.key) {
         this.assertKeyIsUsable(requested);
-        await this.assertKeyIsFree(requested);
+        await this.assertKeyIsFree(ownerId, requested);
         nextKey = requested;
       }
     }
@@ -186,14 +190,14 @@ export class ProjectsService {
       include: { status: true },
     });
 
-    const counts = await this.loadCounts([project.id]);
+    const counts = await this.loadCounts(ownerId, [project.id]);
     return toProjectDto(project, counts.get(project.id) ?? NO_ISSUES);
   }
 
-  private async loadByKey(key: string): Promise<ProjectRow> {
+  private async loadByKey(ownerId: string, key: string): Promise<ProjectRow> {
     const normalised = normaliseProjectKey(key);
-    const project = await this.prisma.project.findUnique({
-      where: { key: normalised },
+    const project = await this.prisma.project.findFirst({
+      where: { ownerId, key: normalised },
       include: { status: true },
     });
 
@@ -204,13 +208,13 @@ export class ProjectsService {
   }
 
   /** Three aggregates rather than a read of every issue — the list page is O(projects). */
-  private async loadCounts(projectIds: string[]): Promise<Map<string, IssueCounts>> {
+  private async loadCounts(ownerId: string, projectIds: string[]): Promise<Map<string, IssueCounts>> {
     const byProject = new Map<string, IssueCounts>();
     if (projectIds.length === 0) {
       return byProject;
     }
 
-    const live = { projectId: { in: projectIds }, archivedAt: null };
+    const live = { ownerId, projectId: { in: projectIds }, archivedAt: null };
     const [totals, completed, legacy] = await Promise.all([
       this.prisma.issue.groupBy({ by: ["projectId"], where: live, _count: { _all: true } }),
       this.prisma.issue.groupBy({
@@ -277,8 +281,8 @@ export class ProjectsService {
     }
   }
 
-  private async assertKeyIsFree(key: string): Promise<void> {
-    const clash = await this.prisma.project.findUnique({ where: { key }, select: { id: true } });
+  private async assertKeyIsFree(ownerId: string, key: string): Promise<void> {
+    const clash = await this.prisma.project.findFirst({ where: { ownerId, key }, select: { id: true } });
     if (clash) {
       throw new ConflictException(`Project key ${key} is already taken`);
     }

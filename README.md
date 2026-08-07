@@ -1,8 +1,12 @@
 # Spira
 
-A self-hosted, single-user ticketing app that replaces Linear. Per-project ticket prefixes
+A self-hosted ticketing app that replaces Linear. Per-project ticket prefixes
 (`PFA-12`, `3DE-2`, `SPI-24`) instead of one workspace-wide counter, and every legacy `COS-xxx`
 identifier keeps resolving — hundreds of them live in commit messages that will never be rewritten.
+
+Accounts each own a private workspace: no sharing, no roles, no invites, but no cap either — a
+throwaway account with demo data can sit beside the real one in the same database without either
+seeing the other.
 
 The UI deliberately copies Linear's, because it works and because this is a personal tool.
 
@@ -31,9 +35,13 @@ mysql -uroot -p -e "CREATE DATABASE spira CHARACTER SET utf8mb4 COLLATE utf8mb4_
 cd nest-api && cp .env.example .env && pnpm install && pnpm migrate:dev && pnpm seed -- --username joe --password azerty
 ```
 
-There is no signup screen; the seeder is the only way an account comes into existence. Locally, pass a
+There is no signup screen; the seeder is the only way an account comes into existence — but you can
+run it as often as you like, and each `--username` gets a workspace of its own. Locally, pass a
 credential you can retype — Chrome will not offer to save one for `http://localhost`. Omit `--password`
 and it mints a random one and prints it once, which is what you want on the server.
+
+Add `--empty` for an account with no demo data, which is what a workspace awaiting the Linear import
+wants.
 
 Then:
 

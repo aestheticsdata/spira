@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, UseGuards } from "@nestjs/common";
+import { GetUserId } from "@auth/decorators/get-user.decorator";
 import { CsrfGuard } from "@auth/guards/csrf.guard";
 import { SessionAuthGuard } from "@auth/guards/session-auth.guard";
 import { CreateTokenDto } from "@tokens/dto/create-token.dto";
@@ -17,20 +18,20 @@ export class TokensController {
 
   @Get()
   @UseGuards(SessionAuthGuard)
-  findAll(): Promise<ApiTokenDto[]> {
-    return this.tokensService.findAll();
+  findAll(@GetUserId() ownerId: string): Promise<ApiTokenDto[]> {
+    return this.tokensService.findAll(ownerId);
   }
 
   @Post()
   @UseGuards(SessionAuthGuard, CsrfGuard)
-  create(@Body() dto: CreateTokenDto): Promise<CreatedApiTokenDto> {
-    return this.tokensService.create(dto);
+  create(@GetUserId() ownerId: string, @Body() dto: CreateTokenDto): Promise<CreatedApiTokenDto> {
+    return this.tokensService.create(ownerId, dto);
   }
 
   /** DELETE revokes rather than deletes; the row and its `lastUsedAt` are the audit trail. */
   @Delete(":id")
   @UseGuards(SessionAuthGuard, CsrfGuard)
-  revoke(@Param("id", ParseUUIDPipe) id: string): Promise<ApiTokenDto> {
-    return this.tokensService.revoke(id);
+  revoke(@GetUserId() ownerId: string, @Param("id", ParseUUIDPipe) id: string): Promise<ApiTokenDto> {
+    return this.tokensService.revoke(ownerId, id);
   }
 }

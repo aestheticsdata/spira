@@ -37,8 +37,11 @@ const VIEW_ORDER = [
 export class ViewsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(projectKey?: string): Promise<SavedViewDto[]> {
-    const where: Prisma.SavedViewWhereInput = {};
+  async findAll(ownerId: string, projectKey?: string): Promise<SavedViewDto[]> {
+    // ownerId sits beside the OR, never inside a branch of it: the workspace-wide
+    // branch matches on `projectId: null` alone and would otherwise reach across
+    // every account's sidebar.
+    const where: Prisma.SavedViewWhereInput = { ownerId };
 
     if (projectKey) {
       // A project's views *and* the workspace's: on a project list, both apply,
@@ -52,7 +55,7 @@ export class ViewsService {
     return rows.map((row) => this.toDto(row));
   }
 
-  async create(dto: CreateViewDto): Promise<SavedViewDto> {
+  async create(ownerId: string, dto: CreateViewDto): Promise<SavedViewDto> {
     // Checked before anything is written: a view that could not be replayed is
     // not a view, and storing one would move the failure to whoever opens it.
     const { query, error } = checkViewQuery(dto.query);
@@ -60,16 +63,17 @@ export class ViewsService {
       throw new BadRequestException(error ?? "The view's query is not valid");
     }
 
-    const projectId = await this.resolveProjectId(dto.projectKey);
+    const projectId = await this.resolveProjectId(ownerId, dto.projectKey);
 
     const row = await this.prisma.savedView.create({
       data: {
         id: randomUUID(),
+        ownerId,
         name: dto.name,
         icon: dto.icon ?? null,
         projectId,
         query,
-        position: await this.nextPosition(projectId),
+        position: await this.nextPosition(ownerId, projectId),
       },
       select: VIEW_SELECT,
     });
@@ -77,8 +81,10 @@ export class ViewsService {
     return this.toDto(row);
   }
 
-  async update(id: string, dto: UpdateViewDto): Promise<SavedViewDto> {
-    const existing = await this.prisma.savedView.findUnique({ where: { id }, select: { id: true } });
+  async update(ownerId: string, id: string, dto: UpdateViewDto): Promise<SavedViewDto> {
+    // Scoped find before the write: another owner's view has to read as absent,
+    // and `update` by id alone would happily rewrite it.
+    const existing = await this.prisma.savedView.findFirst({ where: { id, ownerId }, select: { id: true } });
     if (!existing) {
       throw new NotFoundException("View not found");
     }
@@ -107,10 +113,10 @@ export class ViewsService {
     return this.toDto(row);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(ownerId: string, id: string): Promise<void> {
     // deleteMany rather than delete: the count says whether the row existed
     // without a second round trip, as the labels service does.
-    const { count } = await this.prisma.savedView.deleteMany({ where: { id } });
+    const { count } = await this.prisma.savedView.deleteMany({ where: { id, ownerId } });
     if (count === 0) {
       throw new NotFoundException("View not found");
     }
@@ -121,9 +127,9 @@ export class ViewsService {
    * here enforces otherwise — because a reorder writes several rows and a
    * unique index would make an ordinary drag fail halfway through it.
    */
-  private async nextPosition(projectId: string | null): Promise<number> {
+  private async nextPosition(ownerId: string, projectId: string | null): Promise<number> {
     const last = await this.prisma.savedView.findFirst({
-      where: { projectId },
+      where: { ownerId, projectId },
       select: { position: true },
       orderBy: { position: "desc" },
     });
@@ -131,12 +137,15 @@ export class ViewsService {
     return (last?.position ?? -1) + 1;
   }
 
-  private async resolveProjectId(projectKey?: string | null): Promise<string | null> {
+  private async resolveProjectId(ownerId: string, projectKey?: string | null): Promise<string | null> {
     if (!projectKey) {
       return null;
     }
 
-    const project = await this.prisma.project.findUnique({ where: { key: projectKey }, select: { id: true } });
+    const project = await this.prisma.project.findUnique({
+      where: { ownerId_key: { ownerId, key: projectKey } },
+      select: { id: true },
+    });
     if (!project) {
       throw new NotFoundException(`Project ${projectKey} not found`);
     }

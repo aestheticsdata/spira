@@ -15,6 +15,7 @@ pnpm import:linear -- <export.csv> [--commit] [--side-file <file.json>]
 | ------------- | ------- | ------------------------------------------------------------------------ |
 | `<export.csv>`| —       | The Linear CSV export. Required.                                          |
 | `--commit`    | off     | Actually write. **Without it nothing is written.**                        |
+| `--username`  | —       | Which account's workspace to import into. Optional when the database holds exactly one account; **required** when it holds more, since there is then no safe guess. |
 | `--dry-run`   | —       | Accepted, but the dry run is already the default.                         |
 | `--side-file` | —       | The optional `M1` connector dump: relations and comments. Skipped if absent. |
 | `--skip-orphans` | off  | Leave out rows with an empty `Project` cell instead of failing on them.    |
@@ -29,16 +30,18 @@ it reaches Prisma afterwards, so the report is about the run you are actually go
 Exit code is `1` when the report is not clean, so it can gate a script.
 
 ```bash
-# 1. states and labels have to exist first — the importer maps onto them
-pnpm seed
+# 1. the account and the shared states have to exist first — the importer maps
+#    onto them — but the demo issues must not, so seed it empty in one step
+pnpm seed -- --username cosmokaat@protonmail.com --wipe --empty
 
-# 2. clear the demo issues the seed just wrote — see "Clearing the demo data"
-# 3. read the report
-pnpm import:linear -- linear-export.csv --skip-orphans
+# 2. read the report
+pnpm import:linear -- linear-export.csv --username cosmokaat@protonmail.com --skip-orphans
 
-# 4. once it is clean
-pnpm import:linear -- linear-export.csv --skip-orphans --commit
+# 3. once it is clean
+pnpm import:linear -- linear-export.csv --username cosmokaat@protonmail.com --skip-orphans --commit
 ```
+
+`--empty` replaces what used to be two steps — seed everything, then delete the demo data by hand.
 
 > **Never run `pnpm seed` again after the import.** It writes its demo issues under the same real
 > Linear identifiers the import used, so it overwrites imported issues and then dies part-way on a
@@ -57,13 +60,24 @@ have to go, or `--commit` refuses:
 
 Deleting the `Project` rows is what clears both, and is why the recipe below does it:
 
+The supported way is now the seeder itself, which does exactly this and gets the owner scoping right:
+
+```bash
+pnpm seed -- --username <account> --wipe --empty
+```
+
+⚠️ **The raw SQL below is unscoped and will empty _every_ account's workspace.** Since COS-457 a
+database can hold several, so these statements are only safe on a single-account database — or with
+an `ownerId` predicate added to each. Prefer the command above.
+
 ```sql
-DELETE FROM IssueRelation;
-DELETE FROM IssueLabel;
-DELETE FROM Comment;
-DELETE FROM Issue;
-DELETE FROM SavedView;
-DELETE FROM Project;
+SET @owner := (SELECT id FROM User WHERE username = '<account>');
+DELETE FROM IssueRelation WHERE fromIssueId IN (SELECT id FROM Issue WHERE ownerId = @owner);
+DELETE FROM IssueLabel    WHERE issueId     IN (SELECT id FROM Issue WHERE ownerId = @owner);
+DELETE FROM Comment       WHERE issueId     IN (SELECT id FROM Issue WHERE ownerId = @owner);
+DELETE FROM Issue     WHERE ownerId = @owner;
+DELETE FROM SavedView WHERE ownerId = @owner;
+DELETE FROM Project   WHERE ownerId = @owner;
 ```
 
 `Comment` is in the list because it has a foreign key to `Issue`; the seeder writes none today, so

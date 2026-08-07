@@ -85,6 +85,7 @@ interface ImportOptions {
   sideFile: string | null;
   allowContinuedNumbering: boolean;
   skipOrphans: boolean;
+  username: string | null;
 }
 
 const USAGE = `Usage: pnpm import:linear -- <export.csv> [--commit] [--side-file <file.json>]
@@ -92,6 +93,10 @@ const USAGE = `Usage: pnpm import:linear -- <export.csv> [--commit] [--side-file
   <export.csv>          The Linear CSV export (M1). Required.
   --commit              Actually write. Without it this is a dry run and the
                         database is not touched.
+  --username <name>     The account to import into. Required once the database
+                        holds more than one, because "the workspace" is no longer
+                        a single thing — importing into the wrong one is not
+                        something the report would catch.
   --dry-run             Accepted for symmetry; the dry run is already the default.
   --side-file <file>    The optional M1 connector dump, carrying relations and
                         comments the CSV cannot. Skipped when absent.
@@ -118,6 +123,7 @@ function parseArgs(argv: string[]): ImportOptions {
   let sideFile: string | null = null;
   let allowContinuedNumbering = false;
   let skipOrphans = false;
+  let username: string | null = null;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -147,6 +153,9 @@ function parseArgs(argv: string[]): ImportOptions {
       case "--skip-orphans":
         skipOrphans = true;
         break;
+      case "--username":
+        username = nextVal();
+        break;
       case "--help":
       case "-h":
         throw new UsageError("");
@@ -161,7 +170,33 @@ function parseArgs(argv: string[]): ImportOptions {
   if (!existsSync(file)) throw new UsageError(`No such file: ${file}`);
   if (sideFile !== null && !existsSync(sideFile)) throw new UsageError(`No such side-file: ${sideFile}`);
 
-  return { file, commit, sideFile, allowContinuedNumbering, skipOrphans };
+  return { file, commit, sideFile, allowContinuedNumbering, skipOrphans, username };
+}
+
+/**
+ * Which account this import belongs to. Guessing is only safe when there is
+ * nothing to guess between: with two accounts in the database, importing five
+ * hundred issues into the wrong workspace is silent, and undoing it means
+ * deleting them all again.
+ */
+async function resolveOwnerId(prisma: PrismaClient, username: string | null): Promise<string> {
+  if (username !== null) {
+    const user = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+    if (!user) throw new Error(`No account named "${username}". Create it with \`pnpm seed -- --username ${username}\`.`);
+    return user.id;
+  }
+
+  const users = await prisma.user.findMany({ select: { id: true, username: true }, orderBy: { createdAt: "asc" } });
+  if (users.length === 0) {
+    throw new Error("No account exists. Run `pnpm seed` first — the importer maps onto a workspace, it does not create one.");
+  }
+  if (users.length > 1) {
+    throw new Error(
+      `This database holds ${users.length} accounts (${users.map((u) => u.username).join(", ")}). ` +
+        `Say which one to import into with --username <name>.`,
+    );
+  }
+  return users[0].id;
 }
 
 // --------------------------------------------------------------------------
@@ -371,10 +406,10 @@ function printReport(report: ImportReport): void {
 // --------------------------------------------------------------------------
 // Writing
 // --------------------------------------------------------------------------
-async function readExisting(prisma: PrismaClient): Promise<ExistingWorkspace> {
+async function readExisting(prisma: PrismaClient, ownerId: string): Promise<ExistingWorkspace> {
   const [issues, projects] = await Promise.all([
-    prisma.issue.findMany({ select: { identifier: true, legacyIdentifier: true } }),
-    prisma.project.findMany({ select: { key: true, issueCounter: true } }),
+    prisma.issue.findMany({ where: { ownerId }, select: { identifier: true, legacyIdentifier: true } }),
+    prisma.project.findMany({ where: { ownerId }, select: { key: true, issueCounter: true } }),
   ]);
 
   return {
@@ -386,7 +421,7 @@ async function readExisting(prisma: PrismaClient): Promise<ExistingWorkspace> {
   };
 }
 
-async function write(prisma: PrismaClient, plan: ImportPlan, side: SideFile | null): Promise<void> {
+async function write(prisma: PrismaClient, ownerId: string, plan: ImportPlan, side: SideFile | null): Promise<void> {
   const states = await prisma.workflowState.findMany({ select: { id: true, name: true } });
   const stateIds = new Map(states.map((state) => [state.name, state.id]));
 
@@ -404,12 +439,15 @@ async function write(prisma: PrismaClient, plan: ImportPlan, side: SideFile | nu
       // An existing project's name, icon and colour are the workspace's own and
       // outrank the export's. Only a key with nothing behind it is created.
       const projectIds = new Map<string, string>();
-      const lastPosition = await tx.project.aggregate({ _max: { position: true } });
+      const lastPosition = await tx.project.aggregate({ where: { ownerId }, _max: { position: true } });
       let position = (lastPosition._max.position ?? -1) + 1;
       const backlogId = stateIds.get("Backlog") as string;
 
       for (const project of plan.report.byProject) {
-        const existing = await tx.project.findUnique({ where: { key: project.key }, select: { id: true } });
+        const existing = await tx.project.findUnique({
+          where: { ownerId_key: { ownerId, key: project.key } },
+          select: { id: true },
+        });
         if (existing) {
           projectIds.set(project.key, existing.id);
           continue;
@@ -417,6 +455,7 @@ async function write(prisma: PrismaClient, plan: ImportPlan, side: SideFile | nu
         const created = await tx.project.create({
           data: {
             id: randomUUID(),
+            ownerId,
             key: project.key,
             name: project.name.slice(0, 120),
             statusId: backlogId,
@@ -431,9 +470,9 @@ async function write(prisma: PrismaClient, plan: ImportPlan, side: SideFile | nu
       const labelIds = new Map<string, string>();
       for (const label of plan.report.labels) {
         const row = await tx.label.upsert({
-          where: { name: label.name },
+          where: { ownerId_name: { ownerId, name: label.name } },
           update: {},
-          create: { id: randomUUID(), name: label.name, color: labelColourFor(label.name) },
+          create: { id: randomUUID(), ownerId, name: label.name, color: labelColourFor(label.name) },
           select: { id: true },
         });
         labelIds.set(label.name, row.id);
@@ -450,6 +489,7 @@ async function write(prisma: PrismaClient, plan: ImportPlan, side: SideFile | nu
       await tx.issue.createMany({
         data: writeOrder(plan.issues).map((issue) => ({
           id: issueIds.get(issue.legacyIdentifier) as string,
+          ownerId,
           projectId: projectIds.get(issue.projectKey) as string,
           number: issue.number,
           identifier: issue.identifier,
@@ -484,9 +524,12 @@ async function write(prisma: PrismaClient, plan: ImportPlan, side: SideFile | nu
         const highest = plan.issues
           .filter((issue) => issue.projectKey === project.key)
           .reduce((max, issue) => Math.max(max, issue.number), 0);
-        const current = await tx.project.findUnique({ where: { key: project.key }, select: { issueCounter: true } });
+        const current = await tx.project.findUnique({
+          where: { ownerId_key: { ownerId, key: project.key } },
+          select: { issueCounter: true },
+        });
         await tx.project.update({
-          where: { key: project.key },
+          where: { ownerId_key: { ownerId, key: project.key } },
           data: { issueCounter: Math.max(current?.issueCounter ?? 0, highest) },
         });
       }
@@ -612,7 +655,12 @@ async function main(): Promise<void> {
 
   const prisma = makePrisma();
   try {
-    const existing = await readExisting(prisma);
+    const ownerId = await resolveOwnerId(prisma, opts.username);
+    const owner = await prisma.user.findUniqueOrThrow({ where: { id: ownerId }, select: { username: true } });
+    rule("Target");
+    console.log(`   importing into the workspace of ${owner.username}`);
+
+    const existing = await readExisting(prisma, ownerId);
     const plan = planImport(planned.rows, columns.index, existing);
 
     printReport(plan.report);
@@ -649,7 +697,7 @@ async function main(): Promise<void> {
     }
 
     console.log(`\n   Writing…`);
-    await write(prisma, plan, side);
+    await write(prisma, ownerId, plan, side);
     console.log(`   Done. ${plan.issues.length} issues imported.`);
   } finally {
     await prisma.$disconnect();
