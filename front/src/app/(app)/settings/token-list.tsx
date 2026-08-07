@@ -12,14 +12,34 @@ import type { ApiTokenDto, CreatedApiTokenDto } from "@lib/api-types";
 /** Matches the design's `spira_pat_••••••••••••••••••••8f2c`. */
 const MASK = "•".repeat(20);
 
-function relative(iso: string | null): string {
-  if (!iso) return "never used";
-
+/**
+ * Wall-clock relative time, and therefore only ever rendered after mount — see `lastUsed` below.
+ */
+function relative(iso: string): string {
   const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
   if (seconds < 86_400) return `${Math.floor(seconds / 3600)} h ago`;
   return `${Math.floor(seconds / 86_400)} d ago`;
+}
+
+/**
+ * What the row shows for "last used", split by whether the client has mounted.
+ *
+ * This component is server-rendered — it is a client component, but the settings page is a Server
+ * Component that renders it into the initial HTML. Deriving text from `Date.now()` during that render
+ * makes the server and the browser disagree whenever the age crosses a bucket boundary between the
+ * two, and they do not even share a clock: the server's is ks-b's, the browser's is the user's, so
+ * any skew between them shifts the bucket on every load rather than only near a boundary. React 19
+ * treats a text mismatch as a hydration failure and throws the subtree away.
+ *
+ * Before mount it renders the date portion of the ISO string — pure string slicing, so no clock and
+ * no locale, which means the server and the first client paint are identical by construction. The
+ * relative form takes over on the next render.
+ */
+function lastUsed(iso: string | null, mounted: boolean): string {
+  if (!iso) return "never used";
+  return mounted ? relative(iso) : iso.slice(0, 10);
 }
 
 export function TokenList({ tokens }: { tokens: ApiTokenDto[] }) {
@@ -32,7 +52,12 @@ export function TokenList({ tokens }: { tokens: ApiTokenDto[] }) {
   const [busy, setBusy] = useState(false);
   // The one and only sighting of a raw token. Held in state, never refetched.
   const [revealed, setRevealed] = useState<CreatedApiTokenDto | null>(null);
+  // False through the server render and the hydrating one, so `lastUsed` stays clock-free until both
+  // have agreed on the same HTML.
+  const [mounted, setMounted] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (creating) nameInput.current?.focus();
@@ -147,8 +172,12 @@ export function TokenList({ tokens }: { tokens: ApiTokenDto[] }) {
               spira_pat_{MASK}
               {token.suffix}
             </span>
+            {/* Shown for revoked tokens too. The whole reason the row is kept rather than deleted is
+                that its last use is the record of what had access and when — replacing it with the
+                word "revoked" would throw away the one fact worth reading after revoking in a hurry.
+                The struck-through name and the missing Revoke button already say it is revoked. */}
             <span className="w-[92px] flex-none text-right text-11 text-ink-7">
-              {revoked ? "revoked" : relative(token.lastUsedAt)}
+              {lastUsed(token.lastUsedAt, mounted)}
             </span>
 
             {revoked ? (
