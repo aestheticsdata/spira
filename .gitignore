@@ -41,3 +41,8 @@ front/next-env.d.ts
 **/e2e/.auth/
 **/test-results/
 **/playwright-report/
+
+# PM2 config for the API: holds the process env as literals, including the
+# vps-debian backup credentials. Server-only, like PFA's and bkmk's — start from
+# nest-api/ecosystem.config.example.js.
+nest-api/ecosystem.config.js
