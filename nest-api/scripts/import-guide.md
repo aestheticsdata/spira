@@ -17,6 +17,8 @@ pnpm import:linear -- <export.csv> [--commit] [--side-file <file.json>]
 | `--commit`    | off     | Actually write. **Without it nothing is written.**                        |
 | `--dry-run`   | —       | Accepted, but the dry run is already the default.                         |
 | `--side-file` | —       | The optional `M1` connector dump: relations and comments. Skipped if absent. |
+| `--skip-orphans` | off  | Leave out rows with an empty `Project` cell instead of failing on them.    |
+| `--allow-continued-numbering` | off | Write even though a project already holds issues.             |
 | `--help`      | —       | Print the usage and exit without touching the database.                   |
 
 **The dry run is the default, and `--commit` is the only thing that writes.** The ticket asks for a
@@ -30,12 +32,52 @@ Exit code is `1` when the report is not clean, so it can gate a script.
 # 1. states and labels have to exist first — the importer maps onto them
 pnpm seed
 
-# 2. read the report
-pnpm import:linear -- linear-export.csv
+# 2. clear the demo issues the seed just wrote — see "Clearing the demo data"
+# 3. read the report
+pnpm import:linear -- linear-export.csv --skip-orphans
 
-# 3. once it is clean
-pnpm import:linear -- linear-export.csv --commit
+# 4. once it is clean
+pnpm import:linear -- linear-export.csv --skip-orphans --commit
 ```
+
+> **Never run `pnpm seed` again after the import.** It writes its demo issues under the same real
+> Linear identifiers the import used, so it overwrites imported issues and then dies part-way on a
+> unique-index violation, leaving the workspace half-clobbered. The seed exists to make an empty
+> database usable; once real data is in, it is a destructive command.
+
+## Clearing the demo data
+
+The seeder writes ~85 demo issues **and** a non-zero `Project.issueCounter` for all nine keys. Both
+have to go, or `--commit` refuses:
+
+- the demo issues carry **real `COS-` legacy identifiers**, so the plan reports them as already
+  imported — an error
+- deleting only the issues leaves `issueCounter` untouched, because it lives on the `Project` row,
+  so the continued-numbering refusal fires anyway
+
+Deleting the `Project` rows is what clears both, and is why the recipe below does it:
+
+```sql
+DELETE FROM IssueRelation;
+DELETE FROM IssueLabel;
+DELETE FROM Comment;
+DELETE FROM Issue;
+DELETE FROM SavedView;
+DELETE FROM Project;
+```
+
+`Comment` is in the list because it has a foreign key to `Issue`; the seeder writes none today, so
+omitting it happens to work and would stop working the moment one exists.
+
+The order matters, and so does what is **not** there: `WorkflowState`, `Label` and `User` are left
+alone. The importer maps onto the states rather than creating them, and the account is the only way
+back into the app.
+
+> The projects are then re-created by the import from the export's names alone — without icon,
+> colour, summary, overview description or ordering, and with status `Backlog`. On a cutover database
+> that metadata is the seeder's demo values and losing it costs nothing. It would not be free on a
+> workspace you had already made your own, which is the other reason the import runs first and the
+> app gets used second.
 
 ## What it does
 
@@ -51,6 +93,27 @@ Never read by position. The header is resolved by name through a table of aliase
   to refuse an import, but it is a reason to be told
 
 Only a **missing required** column (`ID`, `Title`, `Status`, `Project`, `Created`) stops the run.
+
+### Rows with no project
+
+Linear lets an issue sit outside every project and creates several such itself — the onboarding
+tickets a workspace is born with (`Get familiar with Linear`, `Connect your tools`, …). Spira has no
+home for one: `Issue.projectId` is `NOT NULL`.
+
+So an empty `Project` cell is a malformed row, and malformed rows are an error. Without a way past
+it, one abandoned onboarding ticket refuses a five-hundred-issue migration. `--skip-orphans` is that
+way past: the rows are left out and **every one of them is printed** with its line and identifier.
+Read that list — "skipped" and "lost" are the same thing to an issue nobody notices is missing.
+
+### Export every team
+
+Linear scopes an issue prefix to a **team**, not a project, so a workspace with two teams has two
+prefixes — and an export taken from one team's view silently contains only that team's issues. The
+import would then report itself perfectly clean while leaving every issue of the other team behind.
+The `Team` column is deliberately ignored by the importer, so nothing downstream can notice either.
+
+Take the export at the **workspace** level, and check the row count against the number of issues the
+workspace actually holds before importing.
 
 With fixed indices, an export that gained one column in the middle would read `Description` as
 `Status` and import a whole workspace of plausible-looking garbage. Hence the table.
@@ -203,7 +266,25 @@ than being a schema change against a workspace that no longer exists.
 ```
 
 **Errors** stop the import: malformed rows, unconfirmed projects, unmapped statuses, duplicate ids,
-dangling parents, looping parent chains, identifiers or legacy identifiers already in the workspace.
+dangling parents, looping parent chains, identifiers or legacy identifiers already in the workspace,
+and an identifier that would shadow another issue's legacy one.
+
+### Shadowed legacy identifiers
+
+Spira gives every project its own prefix. Linear gives every *team* one — so a Linear team's issues
+can already be numbered with the same prefix a Spira project is about to use. `Worldweathr` is that
+case: its issues are `WEA-1…WEA-63` in Linear and the Spira key is `WEA`.
+
+That is harmless exactly while the renumbering reproduces the original numbers one for one, which it
+does when the sequence is contiguous — each issue's new identifier is its own legacy identifier and
+nothing is ambiguous. Lose one row to `--skip-orphans`, or continue numbering from an existing
+counter, and everything after it slides down: `WEA-40` then names one issue live and a *different*
+one historically. Identifiers are matched before legacy identifiers, so the old reference does not
+404 and does not redirect — it quietly serves the wrong issue.
+
+Neither collision check catches it, because both compare the plan against the database and this is
+the plan against itself. `shadowedLegacy` is the check that does, and it is an error rather than a
+warning on the same rule as an unmapped status: the failure mode is a plausible wrong answer.
 
 **Warnings** do not: flattened nesting, demoted parents, cross-project epics, unreadable priorities
 and optional dates, timestamp fallbacks, continued numbering, and several Linear projects merging

@@ -42,11 +42,11 @@ import { parse } from "csv-parse/sync";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "../generated/prisma/client";
 
-import { resolveColumns } from "@migration/linear-columns.util";
+import { readRow, resolveColumns } from "@migration/linear-columns.util";
 import { labelColourFor } from "@migration/linear-vocabulary";
 import { errorsIn, planImport, warningsIn, writeOrder } from "@migration/linear-plan.util";
 
-import type { ColumnResolution } from "@migration/linear-columns.util";
+import type { ColumnResolution, LinearField } from "@migration/linear-columns.util";
 import type { ExistingWorkspace, ImportPlan, ImportReport } from "@migration/linear-plan.util";
 
 /** Long enough for a few thousand rows; the whole import is one transaction. */
@@ -84,6 +84,7 @@ interface ImportOptions {
   commit: boolean;
   sideFile: string | null;
   allowContinuedNumbering: boolean;
+  skipOrphans: boolean;
 }
 
 const USAGE = `Usage: pnpm import:linear -- <export.csv> [--commit] [--side-file <file.json>]
@@ -100,6 +101,10 @@ const USAGE = `Usage: pnpm import:linear -- <export.csv> [--commit] [--side-file
                         default: at cutover this almost always means the demo data
                         from 'pnpm seed' is still there, and the numbering it
                         causes cannot be undone afterwards.
+  --skip-orphans        Leave out rows with an empty Project cell instead of
+                        failing on them. Linear's own onboarding tickets have no
+                        project, and one of them is otherwise enough to stop a
+                        whole workspace's import. Every skipped row is listed.
   --help                Print this and exit.
 
 Examples:
@@ -112,6 +117,7 @@ function parseArgs(argv: string[]): ImportOptions {
   let commit = false;
   let sideFile: string | null = null;
   let allowContinuedNumbering = false;
+  let skipOrphans = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -138,6 +144,9 @@ function parseArgs(argv: string[]): ImportOptions {
       case "--allow-continued-numbering":
         allowContinuedNumbering = true;
         break;
+      case "--skip-orphans":
+        skipOrphans = true;
+        break;
       case "--help":
       case "-h":
         throw new UsageError("");
@@ -152,7 +161,7 @@ function parseArgs(argv: string[]): ImportOptions {
   if (!existsSync(file)) throw new UsageError(`No such file: ${file}`);
   if (sideFile !== null && !existsSync(sideFile)) throw new UsageError(`No such side-file: ${sideFile}`);
 
-  return { file, commit, sideFile, allowContinuedNumbering };
+  return { file, commit, sideFile, allowContinuedNumbering, skipOrphans };
 }
 
 // --------------------------------------------------------------------------
@@ -216,6 +225,54 @@ function readSideFile(path: string): { side: SideFile; problems: string[] } {
   }
 
   return { side, problems };
+}
+
+// --------------------------------------------------------------------------
+// Orphans — rows belonging to no project
+// --------------------------------------------------------------------------
+interface Orphan {
+  line: number;
+  id: string;
+  title: string;
+}
+
+/**
+ * Splits off the rows with an empty `Project` cell.
+ *
+ * Linear allows an issue to sit outside every project, and creates several such itself: the
+ * onboarding tickets a workspace is born with. Spira has no home for one — `Issue.projectId` is
+ * `NOT NULL` — so the planner is right to call the row malformed. What it cannot do is let the
+ * operator past it, and one abandoned "Get familiar with Linear" is otherwise enough to refuse a
+ * five-hundred-issue migration with no way through but hand-editing the export.
+ *
+ * Opt-in, and never silent: every dropped row is printed with its line and identifier, because
+ * "skipped" and "lost" are the same thing to an issue that nobody notices is missing.
+ */
+function withoutOrphans(
+  body: string[][],
+  index: Partial<Record<LinearField, number>>,
+): { rows: string[][]; orphans: Orphan[] } {
+  const rows: string[][] = [];
+  const orphans: Orphan[] = [];
+
+  body.forEach((row, position) => {
+    // Blank lines are the planner's business, not this function's — it counts them out of `rowsRead`
+    // and would otherwise report a file's trailing newline as a lost issue.
+    if (row.every((cell) => (cell ?? "").trim() === "")) {
+      rows.push(row);
+      return;
+    }
+
+    const cells = readRow(row, index);
+    if (cells.project === "") {
+      // +2: one for the header, one because a line number is 1-based.
+      orphans.push({ line: position + 2, id: cells.id, title: cells.title });
+      return;
+    }
+    rows.push(row);
+  });
+
+  return { rows, orphans };
 }
 
 // --------------------------------------------------------------------------
@@ -527,6 +584,20 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Dropped here rather than inside the planner so that nothing about how a row becomes an issue
+  // changes: these rows simply never reach it, and the planner's own definition of malformed —
+  // which still catches an empty project cell — is untouched.
+  const planned = opts.skipOrphans ? withoutOrphans(body, columns.index) : { rows: body, orphans: [] };
+  if (opts.skipOrphans) {
+    rule(`Orphans skipped (${planned.orphans.length})`);
+    if (planned.orphans.length === 0) {
+      console.log(`   none — every row names a project, so --skip-orphans changed nothing`);
+    } else {
+      listSome(planned.orphans, (orphan) => `line ${orphan.line}: ${orphan.id || "(no ID)"} ${orphan.title}`);
+      console.log(`   ↳ these will not exist in Spira at all. Read the list before committing.`);
+    }
+  }
+
   let side: SideFile | null = null;
   if (opts.sideFile) {
     const read = readSideFile(opts.sideFile);
@@ -542,7 +613,7 @@ async function main(): Promise<void> {
   const prisma = makePrisma();
   try {
     const existing = await readExisting(prisma);
-    const plan = planImport(body, columns.index, existing);
+    const plan = planImport(planned.rows, columns.index, existing);
 
     printReport(plan.report);
 

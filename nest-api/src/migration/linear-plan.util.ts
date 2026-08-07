@@ -94,6 +94,22 @@ export interface ImportReport {
   keyCollisions: { key: string; projects: string[] }[];
   identifierCollisions: string[];
   legacyCollisions: string[];
+  /**
+   * An identifier this import is about to hand out that is already some *other*
+   * imported issue's `legacyIdentifier` (COS-447 audit).
+   *
+   * Only possible when a Spira project key equals a Linear team's prefix, which
+   * this workspace does: the `Worldweathr` project takes the key `WEA` and the
+   * `WorldWeathr` team already numbers its issues `WEA-1…WEA-63`. While the
+   * renumbering happens to reproduce the original numbers one-for-one, every
+   * such identifier is its own legacy identifier and nothing is ambiguous. Drop
+   * one row, or continue numbering from an existing counter, and the sequences
+   * slide apart — at which point `WEA-40` in an old commit message resolves to a
+   * *different* issue rather than 404ing, because identifier is matched before
+   * legacyIdentifier. No existing check sees this: both collision lists above
+   * compare the plan against the database, never the plan against itself.
+   */
+  shadowedLegacy: { identifier: string; live: string; legacy: string }[];
   /** Parents given as UUIDs with no UUID column to match them against. */
   unmatchableUuidParents: number;
   /** Values too long for their column and too load-bearing to truncate. */
@@ -170,6 +186,26 @@ function naturalCompare(a: string, b: string): number {
     return Number(left[2]) - Number(right[2]);
   }
   return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Identifiers this import hands out that are some *other* imported issue's legacy identifier.
+ *
+ * An issue whose new identifier equals its own legacy one is the harmless case — that is what a
+ * faithful renumbering looks like — so it is excluded. What is left is genuine shadowing: two
+ * different issues, one holding `WEA-40` live and one having been `WEA-40` in Linear, with the live
+ * one winning every lookup.
+ */
+function shadowedLegacyIn(issues: PlannedIssue[]): ImportReport["shadowedLegacy"] {
+  const byLegacy = new Map(issues.map((issue) => [issue.legacyIdentifier, issue]));
+
+  return issues
+    .map((issue) => {
+      const shadowed = byLegacy.get(issue.identifier);
+      if (!shadowed || shadowed.legacyIdentifier === issue.legacyIdentifier) return null;
+      return { identifier: issue.identifier, live: issue.legacyIdentifier, legacy: shadowed.legacyIdentifier };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 }
 
 export function planImport(
@@ -550,6 +586,7 @@ export function planImport(
       legacyCollisions: issues
         .filter((issue) => existing.legacyIdentifiers.has(issue.legacyIdentifier))
         .map((issue) => issue.legacyIdentifier),
+      shadowedLegacy: shadowedLegacyIn(issues),
       unmatchableUuidParents,
       tooLong,
 
@@ -636,6 +673,17 @@ export function errorsIn(report: ImportReport): string[] {
   if (report.legacyCollisions.length > 0) {
     errors.push(
       `${plural(report.legacyCollisions.length, "issue")} already imported: ${report.legacyCollisions.slice(0, 5).join(", ")}`,
+    );
+  }
+  if (report.shadowedLegacy.length > 0) {
+    // An error rather than a warning, on the same rule as an unmapped status: the failure is a
+    // reference that resolves to a plausible wrong issue instead of failing, which nobody finds.
+    errors.push(
+      `${plural(report.shadowedLegacy.length, "identifier")} would shadow another issue's legacy identifier: ` +
+        report.shadowedLegacy
+          .slice(0, 5)
+          .map((entry) => `${entry.identifier} (${entry.live}) hides legacy ${entry.identifier} (${entry.legacy})`)
+          .join(", "),
     );
   }
   for (const entry of report.tooLong) {
