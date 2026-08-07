@@ -233,6 +233,7 @@ demo issues, which is roughly the shape a cutover database is in.
 
 ## Not this script's job
 
-- **Redirects and search across `legacyIdentifier`** — `M3` (COS-284). This script only writes the
-  column.
+- **Redirects, search and reference chips across `legacyIdentifier`** — already built, in `P3`, `S1`,
+  `I2`, `I3` and `I5`, well before this script existed. This script only writes the column; nothing
+  downstream needs to change when it runs.
 - **Creating states** — `pnpm seed` does that, and the importer refuses to run without them.

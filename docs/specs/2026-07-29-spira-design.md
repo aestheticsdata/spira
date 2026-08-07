@@ -324,7 +324,14 @@ Consequences, all required:
   issue.
 - The issue row and detail header render the new identifier with the legacy one beside it, visually
   subdued: **PFA-12** `COS-177`.
-- `/issue/COS-177` responds `301` to `/issue/PFA-12`, so a pasted legacy URL still lands correctly.
+- `/issue/COS-177` responds `308` to `/issue/PFA-12`, so a pasted legacy URL still lands correctly.
+  Specified as `301` originally; what ships is Next's `permanentRedirect`, which emits `308`. Both are
+  permanent and cacheable, and `308` additionally forbids the method rewriting `301` historically
+  allowed — moot for a page URL, which is only ever fetched with GET. Emitting a literal `301` would
+  mean moving the decision out of the Server Component, the only place that can ask the API what an
+  identifier resolves to.
+  A legacy URL opened without a live session is preserved across the login redirect as `?next=`
+  rather than dropped, which is the case this bullet exists for.
 - Markdown auto-linking (§8) resolves both forms, so `COS-177` typed inside an imported description
   renders as a working chip.
 
@@ -359,7 +366,7 @@ export first.
 
 Note that the *rendering* half of the legacy story is not part of this phase at all. The
 `legacyIdentifier` column, resolution of both identifier forms, showing both in rows and headers, the
-`301` redirect, reference chips and search across both are built much earlier, in `F2`, `P3`, `I2`,
+`308` redirect, reference chips and search across both are built much earlier, in `F2`, `P3`, `I2`,
 `I3`, `I5` and `S1`. The migration only supplies the data those already handle.
 
 By cutover the export includes Spira's own tickets: `COS-251` and its children become `SPI-` issues

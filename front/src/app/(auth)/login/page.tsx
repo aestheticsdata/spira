@@ -1,4 +1,5 @@
 import { LoginForm } from "@app/(auth)/login/login-form";
+import { safeNextPath } from "@lib/next-path";
 import { serverFetch } from "@lib/server-api";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -16,17 +17,28 @@ export const metadata: Metadata = { title: "Sign in · Spira" };
  * The "you are already signed in" redirect lives here rather than in the proxy
  * because it needs the API's answer, not the cookie's presence. Asking the
  * authority in both places is what keeps this from looping against the app
- * layout: either the session is live and both send you to /projects, or it is
- * not and both leave you here.
+ * layout: either the session is live and both send you on, or it is not and both
+ * leave you here.
+ *
+ * Where "on" points is `?next=`, set by the proxy when it bounced the request.
+ * It is narrowed by `safeNextPath` before it reaches either redirect — it is
+ * whatever was in the URL bar, so it is treated as an attacker's string and is
+ * never allowed to name another origin.
  */
-export default async function LoginPage() {
-  const signedIn = await serverFetch<AuthenticatedUserDto>("/users/me").then(
-    () => true,
-    () => false,
-  );
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
+  const [{ next }, signedIn] = await Promise.all([
+    searchParams,
+    serverFetch<AuthenticatedUserDto>("/users/me").then(
+      () => true,
+      () => false,
+    ),
+  ]);
+
+  // A repeated ?next= arrives as an array; there is no sensible way to pick one, so take neither.
+  const destination = safeNextPath(Array.isArray(next) ? null : next) ?? "/projects";
 
   if (signedIn) {
-    redirect("/projects");
+    redirect(destination);
   }
 
   return (
@@ -46,7 +58,7 @@ export default async function LoginPage() {
           </div>
         </div>
 
-        <LoginForm />
+        <LoginForm destination={destination} />
       </div>
     </div>
   );

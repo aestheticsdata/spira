@@ -83,6 +83,7 @@ interface ImportOptions {
   file: string;
   commit: boolean;
   sideFile: string | null;
+  allowContinuedNumbering: boolean;
 }
 
 const USAGE = `Usage: pnpm import:linear -- <export.csv> [--commit] [--side-file <file.json>]
@@ -93,6 +94,12 @@ const USAGE = `Usage: pnpm import:linear -- <export.csv> [--commit] [--side-file
   --dry-run             Accepted for symmetry; the dry run is already the default.
   --side-file <file>    The optional M1 connector dump, carrying relations and
                         comments the CSV cannot. Skipped when absent.
+  --allow-continued-numbering
+                        Write even though some project already holds issues, so
+                        its import starts at KEY-N+1 instead of KEY-1. Refused by
+                        default: at cutover this almost always means the demo data
+                        from 'pnpm seed' is still there, and the numbering it
+                        causes cannot be undone afterwards.
   --help                Print this and exit.
 
 Examples:
@@ -104,6 +111,7 @@ function parseArgs(argv: string[]): ImportOptions {
   let file: string | undefined;
   let commit = false;
   let sideFile: string | null = null;
+  let allowContinuedNumbering = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -127,6 +135,9 @@ function parseArgs(argv: string[]): ImportOptions {
       case "--side-file":
         sideFile = nextVal();
         break;
+      case "--allow-continued-numbering":
+        allowContinuedNumbering = true;
+        break;
       case "--help":
       case "-h":
         throw new UsageError("");
@@ -141,7 +152,7 @@ function parseArgs(argv: string[]): ImportOptions {
   if (!existsSync(file)) throw new UsageError(`No such file: ${file}`);
   if (sideFile !== null && !existsSync(sideFile)) throw new UsageError(`No such side-file: ${sideFile}`);
 
-  return { file, commit, sideFile };
+  return { file, commit, sideFile, allowContinuedNumbering };
 }
 
 // --------------------------------------------------------------------------
@@ -548,6 +559,22 @@ async function main(): Promise<void> {
     if (!opts.commit) {
       console.log(`\n   Dry run. Re-run with --commit to write it.`);
       return;
+    }
+
+    // M3's rule is "renumbered from 1 under the project key", and this is the one way to lose it
+    // silently. The importer requires `pnpm seed` to have run, and the seeder writes demo issues plus
+    // a non-zero issueCounter — so on a freshly provisioned box every project reports continued
+    // numbering, and a --commit run would permanently start the real import at KEY-N+1. It was only a
+    // warning in a long report, which is not where an irreversible decision belongs.
+    if (plan.report.continuedNumbering.length > 0 && !opts.allowContinuedNumbering) {
+      console.error(`\n   REFUSING TO WRITE — ${plan.report.continuedNumbering.length} project(s) already hold issues:`);
+      for (const project of plan.report.continuedNumbering) {
+        console.error(`     ${project.key} would start at ${project.key}-${project.from + 1}, not ${project.key}-1`);
+      }
+      console.error(`\n   This is almost certainly the demo data from \`pnpm seed\`. Clear it and re-run,`);
+      console.error(`   or pass --allow-continued-numbering if the existing issues are meant to stay.`);
+      console.error(`   Renumbering cannot be redone once the import is written.`);
+      process.exit(1);
     }
 
     console.log(`\n   Writing…`);

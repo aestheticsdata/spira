@@ -106,6 +106,13 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                   className="w-[136px] flex-none"
                 />
                 <span className="min-w-0 flex-1 truncate text-125 text-ink-3">{result.title}</span>
+                {/* Only an exact identifier hit can be archived, and it is worth saying: the row
+                    otherwise reads as live, and the issue is on no list the user opens next. */}
+                {result.archived && (
+                  <span className="flex-none rounded-[3px] border border-line px-1 py-px text-10 text-ink-7">
+                    archived
+                  </span>
+                )}
                 <span className="flex-none text-11 text-ink-7">{result.projectKey}</span>
               </button>
             ))}

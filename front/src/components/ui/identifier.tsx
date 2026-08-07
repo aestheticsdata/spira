@@ -34,6 +34,11 @@ export function Identifier({
     compact: "text-9 px-[3px]",
   }[variant];
 
+  // The design gives the capsule a different tone per context — #9a9ca2 in the list row, one step
+  // brighter at #a2a4aa in the detail header, where it sits beside a 16px identifier rather than an
+  // 11.5px one. Same dashed box, different weight of quiet.
+  const pastTone = variant === "header" ? "text-ink-6" : "text-ink-legacy";
+
   return (
     <span className={cn("flex items-baseline gap-1.5", className)}>
       <span
@@ -48,7 +53,7 @@ export function Identifier({
       {legacy && (
         <span
           title={`Was ${legacy} in Linear`}
-          className={cn("identifier rounded-[3px] border border-dashed border-line-legacy text-ink-legacy", past)}
+          className={cn("identifier rounded-[3px] border border-dashed border-line-legacy", pastTone, past)}
         >
           {legacy}
         </span>
