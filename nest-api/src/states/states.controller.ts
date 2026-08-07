@@ -1,6 +1,6 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
 import { StatesService } from "@states/states.service";
-import { SessionAuthGuard } from "@auth/guards/session-auth.guard";
+import { ApiAuthGuard } from "@auth/guards/api-auth.guard";
 
 import type { WorkflowStateDto } from "@states/dto/workflow-state-response.interface";
 
@@ -9,7 +9,7 @@ export class StatesController {
   constructor(private readonly statesService: StatesService) {}
 
   @Get()
-  @UseGuards(SessionAuthGuard)
+  @UseGuards(ApiAuthGuard)
   findAll(): Promise<WorkflowStateDto[]> {
     return this.statesService.findAll();
   }

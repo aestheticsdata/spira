@@ -1,8 +1,26 @@
 # Spira API contract (v1)
 
 The single source of truth shared by `nest-api` and `front`. Everything is under
-the global prefix `/api`. Every route except `POST /users/login` is behind
-`SessionAuthGuard`; every unsafe verb is additionally behind `CsrfGuard`.
+the global prefix `/api`. Every route except `POST /users/login` requires
+authentication; every unsafe verb is additionally behind `CsrfGuard`.
+
+Two guards decide it, and which one a route carries is a security boundary
+rather than a detail (C1):
+
+| Guard | Accepts | Routes |
+|---|---|---|
+| `ApiAuthGuard` | session cookie **or** `Authorization: Bearer <token>` | `projects`, `issues`, `labels`, `states`, `search` |
+| `SessionAuthGuard` | session cookie only | `users`, `views`, `tokens` |
+
+The split is what makes revocation mean something. A leaked token can read and
+write issues — that is its job — but cannot mint another token, list the ones
+that exist, or change the password, so revoking it from the browser actually
+ends its access.
+
+`CsrfGuard` passes a bearer request unconditionally. CSRF protects against a
+credential the browser attaches *automatically*; a bearer token is never
+ambient, so there is nothing to forge, and requiring the header would make the
+connector unusable.
 
 Errors use Nest's default shape: `{ statusCode, message, error }`.
 
@@ -136,6 +154,21 @@ interface SavedViewDto {
   createdAt: string;
   updatedAt: string;
 }
+
+interface ApiTokenDto {
+  id: string;
+  name: string;
+  /** Last four characters of the raw token — the list's only handle on which secret this is. */
+  suffix: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+/** Returned by POST /tokens and nowhere else; `token` is never obtainable again. */
+interface CreatedApiTokenDto extends ApiTokenDto {
+  token: string;
+}
 ```
 
 ## Routes
@@ -260,6 +293,30 @@ Matching order, identifier hits always ranked above text hits:
 2. exact `legacyIdentifier` — also populates `legacyResolved`
 3. prefix on either identifier column
 4. MySQL `FULLTEXT` on `(title, description)`, falling back to `LIKE %q%` for queries under 3 characters
+
+### API tokens — `src/tokens`
+
+Credentials for the MCP connector (C1), and for anything else scripted later. Cookie-only: a token
+cannot reach these routes.
+
+| Verb | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/tokens` | — | `ApiTokenDto[]`, newest first, revoked ones included |
+| POST | `/tokens` | `{ name }` | `CreatedApiTokenDto` — the **only** response carrying `token` |
+| DELETE | `/tokens/:id` | — | `ApiTokenDto`, now revoked |
+
+The raw token is `spira_pat_` followed by 32 random bytes as hex, and it is returned exactly once, by
+`POST`. What is stored is a SHA-256 of it — not a bcrypt: the secret is 256 random bits, so there is
+no low-entropy password for a slow KDF to protect, and unlike a password (verified once per login) a
+token is verified on *every* connector request, where bcrypt's cost would be paid every time.
+
+`DELETE` revokes rather than deletes. The row and its `lastUsedAt` are the record of what had access
+and when it last used it, which is precisely what you want to read after revoking one in a hurry. The
+guard treats revoked and unknown identically, so nothing is gained by dropping the row.
+
+`lastUsedAt` is written at most once every five minutes, claimed through a Redis `SET NX EX` key. The
+column answers "is this still in use", which five-minute resolution answers just as well — and
+without it every connector read would also be a write.
 
 ### Saved views — `src/views`
 

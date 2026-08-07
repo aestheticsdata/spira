@@ -25,6 +25,7 @@
       "@states/*": ["./src/states/*"],
       "@search/*": ["./src/search/*"],
       "@views/*": ["./src/views/*"],
+      "@tokens/*": ["./src/tokens/*"],
       "@migration/*": ["./src/migration/*"]
     },
     "incremental": true,

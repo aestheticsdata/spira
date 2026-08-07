@@ -11,6 +11,14 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    // A bearer token is never ambient: nothing attaches it to a cross-site request the way a browser
+    // attaches a cookie, so there is no forgery for this check to prevent — and demanding a CSRF
+    // header would make the connector unusable. Stated rather than left to fall through the session
+    // test below, which it currently would, silently and for a different reason (C1).
+    if ((request as Request & { authMethod?: string }).authMethod === "token") {
+      return true;
+    }
+
     // Public routes (login) can still use unsafe verbs and don't rely on cookie auth.
     if (!hasAuthenticatedSession(request)) {
       return true;
