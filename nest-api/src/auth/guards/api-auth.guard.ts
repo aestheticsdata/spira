@@ -28,13 +28,6 @@ export type AuthenticatedRequest = Request & { user: SessionUser; authMethod: Au
  */
 @Injectable()
 export class ApiAuthGuard implements CanActivate {
-  /**
-   * Spira has exactly one User row by construction, created by the seeder, and `ApiToken` carries no
-   * owner because there is no second account for it to distinguish. Cached rather than re-read: the
-   * id cannot change without the database being reseeded, which restarts the process anyway.
-   */
-  private cachedUserId: string | null = null;
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -56,7 +49,7 @@ export class ApiAuthGuard implements CanActivate {
 
     const token = await this.prisma.apiToken.findUnique({
       where: { tokenHash: hashApiToken(raw) },
-      select: { id: true, revokedAt: true },
+      select: { id: true, revokedAt: true, ownerId: true },
     });
 
     // Same answer for "no such token" and "revoked token": which of the two it was is not something
@@ -66,7 +59,9 @@ export class ApiAuthGuard implements CanActivate {
     }
 
     await this.touch(token.id);
-    this.authenticate(request, await this.resolveUserId(), "token");
+    // The token's own `ownerId`, never "the account that happens to exist" — that older shortcut
+    // would hand a token from one workspace the keys to another's the moment a second account exists.
+    this.authenticate(request, token.ownerId, "token");
     return true;
   }
 
@@ -74,19 +69,6 @@ export class ApiAuthGuard implements CanActivate {
     const authenticated = request as AuthenticatedRequest;
     authenticated.user = { id: userId };
     authenticated.authMethod = method;
-  }
-
-  private async resolveUserId(): Promise<string> {
-    if (this.cachedUserId) {
-      return this.cachedUserId;
-    }
-    const user = await this.prisma.user.findFirst({ select: { id: true } });
-    if (!user) {
-      // Only reachable on a database that was never seeded, where a valid token cannot exist either.
-      throw new UnauthorizedException("No account exists");
-    }
-    this.cachedUserId = user.id;
-    return user.id;
   }
 
   /**

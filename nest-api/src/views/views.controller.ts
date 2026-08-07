@@ -5,6 +5,7 @@ import { UpdateViewDto } from "@views/dto/update-view.dto";
 import { ViewsQueryDto } from "@views/dto/views-query.dto";
 import { SessionAuthGuard } from "@auth/guards/session-auth.guard";
 import { CsrfGuard } from "@auth/guards/csrf.guard";
+import { GetUserId } from "@auth/decorators/get-user.decorator";
 
 import type { SavedViewDto } from "@views/dto/view-response.interface";
 
@@ -14,26 +15,30 @@ export class ViewsController {
 
   @Get()
   @UseGuards(SessionAuthGuard)
-  findAll(@Query() query: ViewsQueryDto): Promise<SavedViewDto[]> {
-    return this.viewsService.findAll(query.project);
+  findAll(@GetUserId() ownerId: string, @Query() query: ViewsQueryDto): Promise<SavedViewDto[]> {
+    return this.viewsService.findAll(ownerId, query.project);
   }
 
   @Post()
   @UseGuards(SessionAuthGuard, CsrfGuard)
-  create(@Body() dto: CreateViewDto): Promise<SavedViewDto> {
-    return this.viewsService.create(dto);
+  create(@GetUserId() ownerId: string, @Body() dto: CreateViewDto): Promise<SavedViewDto> {
+    return this.viewsService.create(ownerId, dto);
   }
 
   @Patch(":id")
   @UseGuards(SessionAuthGuard, CsrfGuard)
-  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateViewDto): Promise<SavedViewDto> {
-    return this.viewsService.update(id, dto);
+  update(
+    @GetUserId() ownerId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateViewDto,
+  ): Promise<SavedViewDto> {
+    return this.viewsService.update(ownerId, id, dto);
   }
 
   @Delete(":id")
   @UseGuards(SessionAuthGuard, CsrfGuard)
-  async remove(@Param("id", ParseUUIDPipe) id: string): Promise<{ ok: boolean }> {
-    await this.viewsService.remove(id);
+  async remove(@GetUserId() ownerId: string, @Param("id", ParseUUIDPipe) id: string): Promise<{ ok: boolean }> {
+    await this.viewsService.remove(ownerId, id);
     return { ok: true };
   }
 }

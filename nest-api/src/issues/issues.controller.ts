@@ -18,6 +18,7 @@ import { IssuesQueryDto } from "@issues/dto/issues-query.dto";
 import { UpdateIssueDto } from "@issues/dto/update-issue.dto";
 import { ApiAuthGuard } from "@auth/guards/api-auth.guard";
 import { CsrfGuard } from "@auth/guards/csrf.guard";
+import { GetUserId } from "@auth/decorators/get-user.decorator";
 
 import type { IssueDetailDto, IssueListItemDto } from "@issues/dto/issue-response.interface";
 
@@ -27,49 +28,58 @@ export class IssuesController {
 
   @Get()
   @UseGuards(ApiAuthGuard)
-  list(@Query() query: IssuesQueryDto): Promise<IssueListItemDto[]> {
-    return this.issuesService.list(query);
+  list(@GetUserId() ownerId: string, @Query() query: IssuesQueryDto): Promise<IssueListItemDto[]> {
+    return this.issuesService.list(ownerId, query);
   }
 
   @Get(":identifier")
   @UseGuards(ApiAuthGuard)
-  findOne(@Param("identifier") identifier: string): Promise<IssueDetailDto> {
-    return this.issuesService.findByIdentifier(identifier);
+  findOne(@GetUserId() ownerId: string, @Param("identifier") identifier: string): Promise<IssueDetailDto> {
+    return this.issuesService.findByIdentifier(ownerId, identifier);
   }
 
   @Post()
   @UseGuards(ApiAuthGuard, CsrfGuard)
-  create(@Body() dto: CreateIssueDto): Promise<IssueDetailDto> {
-    return this.issuesService.create(dto);
+  create(@GetUserId() ownerId: string, @Body() dto: CreateIssueDto): Promise<IssueDetailDto> {
+    return this.issuesService.create(ownerId, dto);
   }
 
   @Patch(":identifier")
   @UseGuards(ApiAuthGuard, CsrfGuard)
-  update(@Param("identifier") identifier: string, @Body() dto: UpdateIssueDto): Promise<IssueDetailDto> {
-    return this.issuesService.update(identifier, dto);
+  update(
+    @GetUserId() ownerId: string,
+    @Param("identifier") identifier: string,
+    @Body() dto: UpdateIssueDto,
+  ): Promise<IssueDetailDto> {
+    return this.issuesService.update(ownerId, identifier, dto);
   }
 
   @Delete(":identifier")
   @UseGuards(ApiAuthGuard, CsrfGuard)
   @HttpCode(HttpStatus.OK)
-  archive(@Param("identifier") identifier: string): Promise<{ ok: boolean }> {
-    return this.issuesService.archive(identifier);
+  archive(@GetUserId() ownerId: string, @Param("identifier") identifier: string): Promise<{ ok: boolean }> {
+    return this.issuesService.archive(ownerId, identifier);
   }
 
   @Post(":identifier/relations")
   @UseGuards(ApiAuthGuard, CsrfGuard)
   @HttpCode(HttpStatus.OK)
-  addRelation(@Param("identifier") identifier: string, @Body() dto: CreateRelationDto): Promise<IssueDetailDto> {
-    return this.issuesService.addRelation(identifier, dto);
+  addRelation(
+    @GetUserId() ownerId: string,
+    @Param("identifier") identifier: string,
+    @Body() dto: CreateRelationDto,
+  ): Promise<IssueDetailDto> {
+    return this.issuesService.addRelation(ownerId, identifier, dto);
   }
 
   @Delete(":identifier/relations/:relationId")
   @UseGuards(ApiAuthGuard, CsrfGuard)
   @HttpCode(HttpStatus.OK)
   removeRelation(
+    @GetUserId() ownerId: string,
     @Param("identifier") identifier: string,
     @Param("relationId") relationId: string,
   ): Promise<IssueDetailDto> {
-    return this.issuesService.removeRelation(identifier, relationId);
+    return this.issuesService.removeRelation(ownerId, identifier, relationId);
   }
 }

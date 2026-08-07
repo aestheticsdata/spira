@@ -61,7 +61,7 @@ function makePrisma(): PrismaClient {
 // --------------------------------------------------------------------------
 // Constants
 // --------------------------------------------------------------------------
-const DEFAULT_USERNAME = "cosmokaat";
+const DEFAULT_USERNAME = "cosmokaat@protonmail.com";
 const BCRYPT_ROUNDS = 12;
 /** Mirrors PASSWORD_MIN_LENGTH in src/config/field-limits.ts. */
 const MIN_PASSWORD_LENGTH = 6;
@@ -451,26 +451,33 @@ interface SeedOptions {
   /** undefined = keep the stored hash, or mint one when the account is new. */
   password: string | undefined;
   wipe: boolean;
+  /** Account and shared states only — no demo projects, issues or labels. */
+  empty: boolean;
 }
 
-const USAGE = `Usage: pnpm seed -- [--username <name>] [--password <secret>] [--wipe]
+const USAGE = `Usage: pnpm seed -- [--username <name>] [--password <secret>] [--wipe] [--empty]
 
   --username <name>    Account to seed. Defaults to $SEED_USERNAME, then ${DEFAULT_USERNAME}.
+                       Each account owns a private workspace; seeding one never touches another's.
   --password <secret>  Set the account password. Defaults to $SEED_PASSWORD. When neither is
                        given, a new account gets a random ${GENERATED_PASSWORD_LENGTH}-character password, printed once
                        at the end; an existing account keeps the password it already has.
-  --wipe               Delete the whole workspace (states, labels, projects, issues, relations,
-                       saved views) before seeding. The account row is kept.
+  --wipe               Delete this account's workspace (labels, projects, issues, relations, saved
+                       views) before seeding. The account row and the shared workflow states are kept.
+  --empty              Create the account and the shared workflow states, and stop there — no demo
+                       projects, issues or labels. What you want before importing real data.
 
 Examples:
   pnpm seed                                        # top the workspace back up
   pnpm seed -- --wipe                              # rebuild the demo data from scratch
-  pnpm seed -- --username joe --password azerty    # a login you can actually type, for local dev`;
+  pnpm seed -- --username joe --password azerty    # a login you can actually type, for local dev
+  pnpm seed -- --username cosmokaat --wipe --empty # an empty workspace, ready for the Linear import`;
 
 function parseArgs(argv: string[]): SeedOptions {
   let username: string | undefined;
   let password: string | undefined;
   let wipe = false;
+  let empty = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -487,6 +494,9 @@ function parseArgs(argv: string[]): SeedOptions {
         break; // pnpm forwards the `--` separator literally; ignore it
       case "--wipe":
         wipe = true;
+        break;
+      case "--empty":
+        empty = true;
         break;
       case "--username":
         username = nextVal();
@@ -510,7 +520,7 @@ function parseArgs(argv: string[]): SeedOptions {
   if (resolvedPassword !== undefined && resolvedPassword.length < MIN_PASSWORD_LENGTH) {
     throw new UsageError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
   }
-  return { username: resolvedUsername, password: resolvedPassword, wipe };
+  return { username: resolvedUsername, password: resolvedPassword, wipe, empty };
 }
 
 // --------------------------------------------------------------------------
@@ -553,18 +563,10 @@ interface SeededUser {
 async function seedUser(prisma: PrismaClient, username: string, password: string | undefined): Promise<SeededUser> {
   const existing = await prisma.user.findUnique({ where: { username } });
 
-  // Spira has exactly one account, so a re-run that forgot --username must not
-  // quietly mint a second one alongside the real owner. Refuse instead, and say
-  // which address the workspace already belongs to.
-  if (!existing) {
-    const other = await prisma.user.findFirst();
-    if (other) {
-      throw new Error(
-        `This workspace already belongs to ${other.username}. Spira is single-user: re-run with ` +
-          `--username ${other.username} (optionally --password) to reseed it, or delete that account first.`,
-      );
-    }
-  }
+  // No cap on accounts, and no guard against a second one (COS-457): every
+  // account owns a workspace of its own, so seeding `joe` alongside `cosmokaat`
+  // builds a parallel workspace rather than trampling the first one. Everything
+  // below is scoped to this account's id for exactly that reason.
 
   // An explicit password always wins — it doubles as a reset. Without one we
   // only mint a password for an account that does not exist yet: a plain
@@ -598,23 +600,27 @@ async function seedStates(prisma: PrismaClient): Promise<Map<StateKey, string>> 
   return ids;
 }
 
-async function seedLabels(prisma: PrismaClient): Promise<Map<LabelKey, string>> {
+async function seedLabels(prisma: PrismaClient, ownerId: string): Promise<Map<LabelKey, string>> {
   const ids = new Map<LabelKey, string>();
   for (const label of LABELS) {
     const row = await prisma.label.upsert({
-      where: { name: label.name },
+      where: { ownerId_name: { ownerId, name: label.name } },
       update: { color: label.color },
-      create: { id: randomUUID(), name: label.name, color: label.color },
+      create: { id: randomUUID(), ownerId, name: label.name, color: label.color },
     });
     ids.set(label.key, row.id);
   }
   return ids;
 }
 
-async function seedProjects(prisma: PrismaClient, stateIds: Map<StateKey, string>): Promise<Map<string, string>> {
+async function seedProjects(
+  prisma: PrismaClient,
+  ownerId: string,
+  stateIds: Map<StateKey, string>,
+): Promise<Map<string, string>> {
   const ids = new Map<string, string>();
   for (const [position, project] of PROJECTS.entries()) {
-    const existing = await prisma.project.findUnique({ where: { key: project.key } });
+    const existing = await prisma.project.findUnique({ where: { ownerId_key: { ownerId, key: project.key } } });
     // Never lower the counter: a real create may already have gone past the
     // seeded rows, and handing the same number out twice collides on
     // Issue.identifier.
@@ -631,9 +637,9 @@ async function seedProjects(prisma: PrismaClient, stateIds: Map<StateKey, string
       position,
     };
     const row = await prisma.project.upsert({
-      where: { key: project.key },
+      where: { ownerId_key: { ownerId, key: project.key } },
       update: data,
-      create: { id: randomUUID(), key: project.key, ...data },
+      create: { id: randomUUID(), ownerId, key: project.key, ...data },
     });
     ids.set(project.key, row.id);
   }
@@ -642,6 +648,7 @@ async function seedProjects(prisma: PrismaClient, stateIds: Map<StateKey, string
 
 async function seedIssues(
   prisma: PrismaClient,
+  ownerId: string,
   projectIds: Map<string, string>,
   stateIds: Map<StateKey, string>,
   labelIds: Map<LabelKey, string>,
@@ -674,9 +681,9 @@ async function seedIssues(
       archivedAt: null,
     };
     const row = await prisma.issue.upsert({
-      where: { identifier },
+      where: { ownerId_identifier: { ownerId, identifier } },
       update: data,
-      create: { id: randomUUID(), identifier, ...data },
+      create: { id: randomUUID(), ownerId, identifier, ...data },
     });
     ids.set(identifier, row.id);
 
@@ -691,7 +698,7 @@ async function seedIssues(
   for (const [identifier, , , , , , , epicIdentifier] of ISSUES) {
     if (!epicIdentifier) continue;
     await prisma.issue.update({
-      where: { identifier },
+      where: { ownerId_identifier: { ownerId, identifier } },
       data: { epicId: must(ids.get(epicIdentifier), `unknown epic ${epicIdentifier} on ${identifier}`) },
     });
   }
@@ -713,21 +720,27 @@ async function seedRelations(prisma: PrismaClient, issueIds: Map<string, string>
   await prisma.issueRelation.createMany({ data: rows, skipDuplicates: true });
 }
 
-async function wipeWorkspace(prisma: PrismaClient): Promise<void> {
-  // Foreign-key-safe order. The account row is deliberately kept: a rebuild
-  // must not invalidate the password an earlier run printed.
-  const relations = await prisma.issueRelation.deleteMany();
-  const issueLabels = await prisma.issueLabel.deleteMany();
-  const comments = await prisma.comment.deleteMany();
-  const issues = await prisma.issue.deleteMany();
-  const views = await prisma.savedView.deleteMany();
-  const projects = await prisma.project.deleteMany();
-  const states = await prisma.workflowState.deleteMany();
-  const labels = await prisma.label.deleteMany();
+async function wipeWorkspace(prisma: PrismaClient, ownerId: string): Promise<void> {
+  // Foreign-key-safe order, and scoped to one account throughout (COS-457):
+  // every table below is filtered by owner, directly or through its issue, so a
+  // wipe of `joe` leaves `cosmokaat` untouched.
+  //
+  // The account row is deliberately kept: a rebuild must not invalidate the
+  // password an earlier run printed. `WorkflowState` is no longer wiped either —
+  // it is global, shared by every account, and deleting it would either break
+  // another account's projects or be refused outright by their foreign keys.
+  const ownedIssue = { issue: { ownerId } };
+  const relations = await prisma.issueRelation.deleteMany({ where: { fromIssue: { ownerId } } });
+  const issueLabels = await prisma.issueLabel.deleteMany({ where: ownedIssue });
+  const comments = await prisma.comment.deleteMany({ where: ownedIssue });
+  const issues = await prisma.issue.deleteMany({ where: { ownerId } });
+  const views = await prisma.savedView.deleteMany({ where: { ownerId } });
+  const projects = await prisma.project.deleteMany({ where: { ownerId } });
+  const labels = await prisma.label.deleteMany({ where: { ownerId } });
   console.log(
     `  wiped: relations=${relations.count} issueLabels=${issueLabels.count} comments=${comments.count} ` +
-      `issues=${issues.count} views=${views.count} projects=${projects.count} states=${states.count} ` +
-      `labels=${labels.count} (account kept)`,
+      `issues=${issues.count} views=${views.count} projects=${projects.count} labels=${labels.count} ` +
+      `(account and shared workflow states kept)`,
   );
 }
 
@@ -735,18 +748,25 @@ async function wipeWorkspace(prisma: PrismaClient): Promise<void> {
 // Summary
 // --------------------------------------------------------------------------
 async function printSummary(prisma: PrismaClient, user: SeededUser): Promise<void> {
+  const ownerId = user.id;
   console.log("\n=== SUMMARY ===");
-  console.log("Rows:", {
+  // Counts for this account's workspace, not the database's — with several
+  // accounts in one database a global total would say nothing about the run.
+  // `users` and `states` stay global because they are.
+  console.log(`Rows (workspace of ${user.username}):`, {
+    labels: await prisma.label.count({ where: { ownerId } }),
+    projects: await prisma.project.count({ where: { ownerId } }),
+    issues: await prisma.issue.count({ where: { ownerId } }),
+    issueLabels: await prisma.issueLabel.count({ where: { issue: { ownerId } } }),
+    relations: await prisma.issueRelation.count({ where: { fromIssue: { ownerId } } }),
+  });
+  console.log("Shared:", {
     users: await prisma.user.count(),
     states: await prisma.workflowState.count(),
-    labels: await prisma.label.count(),
-    projects: await prisma.project.count(),
-    issues: await prisma.issue.count(),
-    issueLabels: await prisma.issueLabel.count(),
-    relations: await prisma.issueRelation.count(),
   });
 
   const projects = await prisma.project.findMany({
+    where: { ownerId },
     orderBy: { position: "asc" },
     select: { key: true, name: true, issueCounter: true, _count: { select: { issues: true } } },
   });
@@ -784,19 +804,28 @@ async function main(): Promise<void> {
 
   const prisma = makePrisma();
   try {
-    console.log(`Seeding ${opts.username}\n  mode: ${opts.wipe ? "WIPE + rebuild" : "upsert (non-destructive)"}`);
+    const mode = opts.empty ? "empty (account + states only)" : opts.wipe ? "WIPE + rebuild" : "upsert (non-destructive)";
+    console.log(`Seeding ${opts.username}\n  mode: ${mode}`);
+
+    // The account is resolved first: everything below is scoped to its id, and
+    // the wipe in particular has nothing to aim at until we know whose it is.
+    const user = await seedUser(prisma, opts.username, opts.password);
 
     if (opts.wipe) {
-      console.log("Wiping the workspace...");
-      await wipeWorkspace(prisma);
+      console.log(`Wiping the workspace of ${user.username}...`);
+      await wipeWorkspace(prisma, user.id);
     }
 
-    const user = await seedUser(prisma, opts.username, opts.password);
+    // Global, and seeded whatever the mode: an empty workspace still needs the
+    // shared state palette, or its first project has no status to point at.
     const stateIds = await seedStates(prisma);
-    const labelIds = await seedLabels(prisma);
-    const projectIds = await seedProjects(prisma, stateIds);
-    const issueIds = await seedIssues(prisma, projectIds, stateIds, labelIds);
-    await seedRelations(prisma, issueIds);
+
+    if (!opts.empty) {
+      const labelIds = await seedLabels(prisma, user.id);
+      const projectIds = await seedProjects(prisma, user.id, stateIds);
+      const issueIds = await seedIssues(prisma, user.id, projectIds, stateIds, labelIds);
+      await seedRelations(prisma, issueIds);
+    }
 
     await printSummary(prisma, user);
     console.log("\nDone.");

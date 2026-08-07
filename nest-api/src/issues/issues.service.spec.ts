@@ -22,6 +22,7 @@ interface TestProject {
 
 interface TestIssue {
   id: string;
+  ownerId: string;
   projectId: string;
   number: number;
   identifier: string;
@@ -47,6 +48,7 @@ interface TestIssue {
 }
 
 interface IssueWhere {
+  ownerId?: string;
   id?: string;
   identifier?: string;
   legacyIdentifier?: string;
@@ -54,7 +56,7 @@ interface IssueWhere {
 
 interface PrismaMock {
   issue: {
-    findUnique: jest.Mock;
+    findFirst: jest.Mock;
     findMany: jest.Mock;
     count: jest.Mock;
     create: jest.Mock;
@@ -79,9 +81,13 @@ const STATES = [BACKLOG, STARTED, DONE, CANCELED];
 
 const PROJECT: TestProject = { id: "project-1", key: "PFA", name: "Portfolio", icon: null, color: null };
 
+/** Every fixture belongs to one account; the service never reads outside it. */
+const OWNER = "user-1";
+
 function issueRow(overrides: Partial<TestIssue> = {}): TestIssue {
   return {
     id: "issue-1",
+    ownerId: OWNER,
     projectId: PROJECT.id,
     number: 12,
     identifier: "PFA-12",
@@ -112,9 +118,10 @@ function findIssue(rows: TestIssue[], where: IssueWhere): TestIssue | null {
   return (
     rows.find(
       (row) =>
-        (where.id !== undefined && row.id === where.id) ||
-        (where.identifier !== undefined && row.identifier === where.identifier) ||
-        (where.legacyIdentifier !== undefined && row.legacyIdentifier === where.legacyIdentifier),
+        row.ownerId === where.ownerId &&
+        ((where.id !== undefined && row.id === where.id) ||
+          (where.identifier !== undefined && row.identifier === where.identifier) ||
+          (where.legacyIdentifier !== undefined && row.legacyIdentifier === where.legacyIdentifier)),
     ) ?? null
   );
 }
@@ -141,7 +148,7 @@ describe("IssuesService", () => {
 
     prisma = {
       issue: {
-        findUnique: jest.fn(({ where }: { where: IssueWhere }) => Promise.resolve(findIssue(issues, where))),
+        findFirst: jest.fn(({ where }: { where: IssueWhere }) => Promise.resolve(findIssue(issues, where))),
         findMany: jest.fn(() => Promise.resolve([])),
         count: jest.fn(() => Promise.resolve(0)),
         create: jest.fn(({ data }: { data: { id: string; identifier: string } }) =>
@@ -162,7 +169,9 @@ describe("IssuesService", () => {
       },
       issueLabel: { groupBy: jest.fn(() => Promise.resolve([])) },
       issueRelation: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
-      $queryRaw: jest.fn(() => Promise.resolve([{ id: PROJECT.id, key: PROJECT.key, issueCounter: 41 }])),
+      $queryRaw: jest.fn(() =>
+        Promise.resolve([{ id: PROJECT.id, ownerId: OWNER, key: PROJECT.key, issueCounter: 41 }]),
+      ),
       $transaction: jest.fn((run: (tx: unknown) => Promise<unknown>) => run(prisma)),
     };
 
@@ -176,16 +185,18 @@ describe("IssuesService", () => {
   describe("list — filters", () => {
     const EPIC = issueRow({ id: "issue-epic", identifier: "PFA-1", number: 1, isEpic: true });
 
-    it("hides archived issues unless asked", async () => {
-      await service.list({});
+    it("hides archived issues unless asked, and never leaves the caller's workspace", async () => {
+      await service.list(OWNER, {});
       expect(lastWhere(prisma.issue.findMany).archivedAt).toBeNull();
+      expect(lastWhere(prisma.issue.findMany).ownerId).toBe(OWNER);
 
-      await service.list({ includeArchived: true });
+      await service.list(OWNER, { includeArchived: true });
       expect(lastWhere(prisma.issue.findMany)).not.toHaveProperty("archivedAt");
+      expect(lastWhere(prisma.issue.findMany).ownerId).toBe(OWNER);
     });
 
     it("takes states and priorities as sets", async () => {
-      await service.list({ state: ["state-a", "state-b"], priority: [1, 2] });
+      await service.list(OWNER, { state: ["state-a", "state-b"], priority: [1, 2] });
 
       const where = lastWhere(prisma.issue.findMany);
       expect(where.stateId).toEqual({ in: ["state-a", "state-b"] });
@@ -193,7 +204,7 @@ describe("IssuesService", () => {
     });
 
     it("combines label include and exclude in one clause", async () => {
-      await service.list({ label: ["label-a"], excludeLabel: ["label-b"] });
+      await service.list(OWNER, { label: ["label-a"], excludeLabel: ["label-b"] });
 
       expect(lastWhere(prisma.issue.findMany).labels).toEqual({
         some: { labelId: { in: ["label-a"] } },
@@ -202,18 +213,18 @@ describe("IssuesService", () => {
     });
 
     it("filters to issues in no epic at all", async () => {
-      await service.list({ hasEpic: false });
+      await service.list(OWNER, { hasEpic: false });
       expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ epicId: null }]);
     });
 
     it("filters to issues that sit in some epic", async () => {
-      await service.list({ hasEpic: true });
+      await service.list(OWNER, { hasEpic: true });
       expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ epicId: { not: null } }]);
     });
 
     it("resolves the named epic and filters on its id", async () => {
       issues = [EPIC];
-      await service.list({ epic: "PFA-1" });
+      await service.list(OWNER, { epic: "PFA-1" });
 
       expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ epicId: EPIC.id }]);
     });
@@ -222,7 +233,7 @@ describe("IssuesService", () => {
       issues = [];
       prisma.issue.findMany.mockClear();
 
-      expect(await service.list({ epic: "PFA-999" })).toEqual([]);
+      expect(await service.list(OWNER, { epic: "PFA-999" })).toEqual([]);
       expect(prisma.issue.findMany).not.toHaveBeenCalled();
     });
 
@@ -231,21 +242,21 @@ describe("IssuesService", () => {
       // for a row with no epic, so the terse form would drop exactly the issues
       // a user asking "not in PFA-1" still expects to see.
       issues = [EPIC];
-      await service.list({ excludeEpic: "PFA-1" });
+      await service.list(OWNER, { excludeEpic: "PFA-1" });
 
       expect(lastWhere(prisma.issue.findMany).AND).toEqual([{ OR: [{ epicId: null }, { epicId: { not: EPIC.id } }] }]);
     });
 
     it("excludes nothing when the excluded epic does not exist", async () => {
       issues = [];
-      await service.list({ excludeEpic: "PFA-999" });
+      await service.list(OWNER, { excludeEpic: "PFA-999" });
 
       expect(lastWhere(prisma.issue.findMany)).not.toHaveProperty("AND");
     });
 
     it("composes the epic arms instead of letting one overwrite another", async () => {
       issues = [EPIC];
-      await service.list({ hasEpic: true, excludeEpic: "PFA-1" });
+      await service.list(OWNER, { hasEpic: true, excludeEpic: "PFA-1" });
 
       expect(lastWhere(prisma.issue.findMany).AND).toEqual([
         { epicId: { not: null } },
@@ -254,7 +265,7 @@ describe("IssuesService", () => {
     });
 
     it("leaves the epic clause off entirely when nothing asks for one", async () => {
-      await service.list({ project: "PFA" });
+      await service.list(OWNER, { project: "PFA" });
       expect(lastWhere(prisma.issue.findMany)).not.toHaveProperty("AND");
     });
   });
@@ -264,17 +275,18 @@ describe("IssuesService", () => {
       issues = [issueRow({ id: "issue-new", identifier: "PFA-42", number: 42, sortOrder: 42_000 })];
       prisma.issue.create.mockResolvedValue({ id: "issue-new", identifier: "PFA-42" });
 
-      const result = await service.create({ projectKey: "pfa", title: "Ship it" });
+      const result = await service.create(OWNER, { projectKey: "pfa", title: "Ship it" });
 
       const [fragments] = prisma.$queryRaw.mock.calls[0] as [string[]];
       expect(fragments.join("?")).toContain("FOR UPDATE");
+      expect(fragments.join("?")).toContain("WHERE ownerId =");
       expect(prisma.project.update).toHaveBeenCalledWith({
         where: { id: PROJECT.id },
         data: { issueCounter: 42 },
       });
       expect(prisma.issue.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ identifier: "PFA-42", number: 42, sortOrder: 42_000 }),
+          data: expect.objectContaining({ ownerId: OWNER, identifier: "PFA-42", number: 42, sortOrder: 42_000 }),
         }),
       );
       expect(result.identifier).toBe("PFA-42");
@@ -285,7 +297,7 @@ describe("IssuesService", () => {
       issues = [issueRow({ id: "issue-new", identifier: "PFA-42", number: 42 })];
       prisma.issue.create.mockResolvedValue({ id: "issue-new", identifier: "PFA-42" });
 
-      await service.create({ projectKey: "PFA", title: "Ship it" });
+      await service.create(OWNER, { projectKey: "PFA", title: "Ship it" });
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });
@@ -293,13 +305,15 @@ describe("IssuesService", () => {
     it("rejects an unknown project", async () => {
       prisma.$queryRaw.mockResolvedValue([]);
 
-      await expect(service.create({ projectKey: "NOPE", title: "Ship it" })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.create(OWNER, { projectKey: "NOPE", title: "Ship it" })).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
     it("rejects an epicId that points at an ordinary issue", async () => {
       issues = [issueRow({ id: "issue-3", identifier: "PFA-3", isEpic: false })];
 
-      await expect(service.create({ projectKey: "PFA", title: "Ship it", epicId: "issue-3" })).rejects.toThrow(
+      await expect(service.create(OWNER, { projectKey: "PFA", title: "Ship it", epicId: "issue-3" })).rejects.toThrow(
         /PFA-3 is not an epic/,
       );
     });
@@ -307,20 +321,20 @@ describe("IssuesService", () => {
     it("rejects an epic from another project", async () => {
       issues = [issueRow({ id: "epic-9", identifier: "OTH-9", isEpic: true, projectId: "project-2" })];
 
-      await expect(service.create({ projectKey: "PFA", title: "Ship it", epicId: "epic-9" })).rejects.toThrow(
+      await expect(service.create(OWNER, { projectKey: "PFA", title: "Ship it", epicId: "epic-9" })).rejects.toThrow(
         /belongs to another project/,
       );
     });
 
     it("rejects an epicId that does not exist", async () => {
-      await expect(service.create({ projectKey: "PFA", title: "Ship it", epicId: "ghost" })).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.create(OWNER, { projectKey: "PFA", title: "Ship it", epicId: "ghost" }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it("refuses to create an epic that already belongs to an epic", async () => {
       await expect(
-        service.create({ projectKey: "PFA", title: "Ship it", isEpic: true, epicId: "epic-1" }),
+        service.create(OWNER, { projectKey: "PFA", title: "Ship it", isEpic: true, epicId: "epic-1" }),
       ).rejects.toThrow(/An epic cannot belong to another epic/);
 
       expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -334,7 +348,7 @@ describe("IssuesService", () => {
       const parent = epic();
       issues = [parent, issueRow({ id: "issue-2", identifier: "PFA-2", epicId: parent.id, epic: parent })];
 
-      const failure = service.update("pfa-2", { isEpic: true });
+      const failure = service.update(OWNER, "pfa-2", { isEpic: true });
 
       await expect(failure).rejects.toBeInstanceOf(BadRequestException);
       await expect(failure).rejects.toThrow(/PFA-2 belongs to epic PFA-1/);
@@ -345,7 +359,7 @@ describe("IssuesService", () => {
       const parent = epic();
       issues = [parent, issueRow({ id: "epic-2", identifier: "PFA-5", isEpic: true })];
 
-      await expect(service.update("PFA-5", { epicId: parent.id })).rejects.toThrow(
+      await expect(service.update(OWNER, "PFA-5", { epicId: parent.id })).rejects.toThrow(
         /An epic cannot belong to another epic/,
       );
     });
@@ -354,8 +368,10 @@ describe("IssuesService", () => {
       issues = [epic()];
       prisma.issue.count.mockResolvedValue(3);
 
-      await expect(service.update("PFA-1", { isEpic: false })).rejects.toThrow(/still has 3 child issues/);
-      expect(prisma.issue.count).toHaveBeenCalledWith({ where: { epicId: "epic-1", archivedAt: null } });
+      await expect(service.update(OWNER, "PFA-1", { isEpic: false })).rejects.toThrow(/still has 3 child issues/);
+      expect(prisma.issue.count).toHaveBeenCalledWith({
+        where: { ownerId: OWNER, epicId: "epic-1", archivedAt: null },
+      });
       expect(prisma.issue.update).not.toHaveBeenCalled();
     });
 
@@ -363,14 +379,14 @@ describe("IssuesService", () => {
       issues = [epic()];
       prisma.issue.count.mockResolvedValue(1);
 
-      await expect(service.update("PFA-1", { isEpic: false })).rejects.toThrow(/still has 1 child issue —/);
+      await expect(service.update(OWNER, "PFA-1", { isEpic: false })).rejects.toThrow(/still has 1 child issue —/);
     });
 
     it("converts an epic back once it has no children", async () => {
       issues = [epic()];
       prisma.issue.count.mockResolvedValue(0);
 
-      await service.update("PFA-1", { isEpic: false });
+      await service.update(OWNER, "PFA-1", { isEpic: false });
 
       expect(lastData(prisma.issue.update)).toEqual({ isEpic: false });
     });
@@ -378,7 +394,9 @@ describe("IssuesService", () => {
     it("refuses to make an issue its own epic", async () => {
       issues = [issueRow({ id: "issue-1", identifier: "PFA-12" })];
 
-      await expect(service.update("PFA-12", { epicId: "issue-1" })).rejects.toThrow(/An issue cannot be its own epic/);
+      await expect(service.update(OWNER, "PFA-12", { epicId: "issue-1" })).rejects.toThrow(
+        /An issue cannot be its own epic/,
+      );
     });
 
     it("refuses an epic in another project", async () => {
@@ -387,19 +405,19 @@ describe("IssuesService", () => {
         issueRow({ id: "epic-9", identifier: "OTH-9", isEpic: true, projectId: "project-2" }),
       ];
 
-      await expect(service.update("PFA-12", { epicId: "epic-9" })).rejects.toThrow(/belongs to another project/);
+      await expect(service.update(OWNER, "PFA-12", { epicId: "epic-9" })).rejects.toThrow(/belongs to another project/);
     });
 
     it("refuses an epicId that points at an ordinary issue", async () => {
       issues = [issueRow({ id: "issue-1", identifier: "PFA-12" }), issueRow({ id: "issue-3", identifier: "PFA-3" })];
 
-      await expect(service.update("PFA-12", { epicId: "issue-3" })).rejects.toThrow(/PFA-3 is not an epic/);
+      await expect(service.update(OWNER, "PFA-12", { epicId: "issue-3" })).rejects.toThrow(/PFA-3 is not an epic/);
     });
 
     it("accepts an epic in the same project", async () => {
       issues = [issueRow({ id: "issue-1", identifier: "PFA-12" }), epic()];
 
-      await service.update("PFA-12", { epicId: "epic-1" });
+      await service.update(OWNER, "PFA-12", { epicId: "epic-1" });
 
       expect(lastData(prisma.issue.update)).toEqual({ epicId: "epic-1" });
     });
@@ -408,7 +426,7 @@ describe("IssuesService", () => {
       const parent = epic();
       issues = [issueRow({ id: "issue-1", identifier: "PFA-12", epicId: parent.id, epic: parent }), parent];
 
-      await service.update("PFA-12", { epicId: null });
+      await service.update(OWNER, "PFA-12", { epicId: null });
 
       expect(lastData(prisma.issue.update)).toEqual({ epicId: null });
     });
@@ -418,7 +436,7 @@ describe("IssuesService", () => {
     it("stamps completedAt and clears canceledAt on a completed state", async () => {
       issues = [issueRow({ canceledAt: new Date("2025-12-01T00:00:00.000Z") })];
 
-      await service.update("PFA-12", { stateId: DONE.id });
+      await service.update(OWNER, "PFA-12", { stateId: DONE.id });
 
       const data = lastData(prisma.issue.update);
       expect(data.stateId).toBe(DONE.id);
@@ -429,7 +447,7 @@ describe("IssuesService", () => {
     it("stamps canceledAt and clears completedAt on a canceled state", async () => {
       issues = [issueRow({ completedAt: new Date("2025-12-01T00:00:00.000Z") })];
 
-      await service.update("PFA-12", { stateId: CANCELED.id });
+      await service.update(OWNER, "PFA-12", { stateId: CANCELED.id });
 
       const data = lastData(prisma.issue.update);
       expect(data.canceledAt).toBeInstanceOf(Date);
@@ -439,7 +457,7 @@ describe("IssuesService", () => {
     it("clears both when the issue moves back to an open state", async () => {
       issues = [issueRow({ stateId: DONE.id, state: DONE, completedAt: new Date("2025-12-01T00:00:00.000Z") })];
 
-      await service.update("PFA-12", { stateId: BACKLOG.id });
+      await service.update(OWNER, "PFA-12", { stateId: BACKLOG.id });
 
       const data = lastData(prisma.issue.update);
       expect(data.completedAt).toBeNull();
@@ -449,7 +467,7 @@ describe("IssuesService", () => {
     it("leaves the timestamps alone when the state does not move", async () => {
       issues = [issueRow({ stateId: DONE.id, state: DONE })];
 
-      await service.update("PFA-12", { stateId: DONE.id, title: "Ship it later" });
+      await service.update(OWNER, "PFA-12", { stateId: DONE.id, title: "Ship it later" });
 
       const data = lastData(prisma.issue.update);
       expect(data).toEqual({ title: "Ship it later" });
@@ -458,7 +476,7 @@ describe("IssuesService", () => {
     it("rejects an unknown state", async () => {
       issues = [issueRow()];
 
-      await expect(service.update("PFA-12", { stateId: "state-ghost" })).rejects.toThrow(/Unknown state/);
+      await expect(service.update(OWNER, "PFA-12", { stateId: "state-ghost" })).rejects.toThrow(/Unknown state/);
     });
   });
 
@@ -466,7 +484,7 @@ describe("IssuesService", () => {
     it("resolves a legacy identifier and reports both identifiers", async () => {
       issues = [issueRow({ identifier: "PFA-12", legacyIdentifier: "COS-177" })];
 
-      const result = await service.findByIdentifier("cos-177");
+      const result = await service.findByIdentifier(OWNER, "cos-177");
 
       expect(result.canonicalIdentifier).toBe("PFA-12");
       expect(result.requestedIdentifier).toBe("COS-177");
@@ -475,14 +493,14 @@ describe("IssuesService", () => {
     it("reports the live identifier as both when it was asked for directly", async () => {
       issues = [issueRow({ identifier: "PFA-12", legacyIdentifier: "COS-177" })];
 
-      const result = await service.findByIdentifier(" pfa-12 ");
+      const result = await service.findByIdentifier(OWNER, " pfa-12 ");
 
       expect(result.canonicalIdentifier).toBe("PFA-12");
       expect(result.requestedIdentifier).toBe("PFA-12");
     });
 
     it("404s when neither column matches", async () => {
-      await expect(service.findByIdentifier("PFA-999")).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.findByIdentifier(OWNER, "PFA-999")).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
@@ -497,7 +515,7 @@ describe("IssuesService", () => {
     it("stores blocked_by as the mirrored blocks row, not a second type", async () => {
       issues = [issueRow(), target()];
 
-      await service.addRelation("PFA-12", { type: "blocked_by", targetIdentifier: "PFA-9" });
+      await service.addRelation(OWNER, "PFA-12", { type: "blocked_by", targetIdentifier: "PFA-9" });
 
       expect(lastData(prisma.issueRelation.create)).toEqual(
         expect.objectContaining({ fromIssueId: "issue-9", toIssueId: "issue-1", type: "blocks" }),
@@ -507,7 +525,7 @@ describe("IssuesService", () => {
     it("stores blocks in the direction it was asked for", async () => {
       issues = [issueRow(), target()];
 
-      await service.addRelation("PFA-12", { type: "blocks", targetIdentifier: "PFA-9" });
+      await service.addRelation(OWNER, "PFA-12", { type: "blocks", targetIdentifier: "PFA-9" });
 
       expect(lastData(prisma.issueRelation.create)).toEqual(
         expect.objectContaining({ fromIssueId: "issue-1", toIssueId: "issue-9", type: "blocks" }),
@@ -517,7 +535,7 @@ describe("IssuesService", () => {
     it("normalises a related pair lower-id-first whichever end asks", async () => {
       issues = [issueRow(), target()];
 
-      await service.addRelation("PFA-9", { type: "related", targetIdentifier: "PFA-12" });
+      await service.addRelation(OWNER, "PFA-9", { type: "related", targetIdentifier: "PFA-12" });
 
       expect(lastData(prisma.issueRelation.create)).toEqual(
         expect.objectContaining({ fromIssueId: "issue-1", toIssueId: "issue-9", type: "related" }),
@@ -530,7 +548,7 @@ describe("IssuesService", () => {
         new Prisma.PrismaClientKnownRequestError("duplicate", { code: "P2002", clientVersion: "test" }),
       );
 
-      const result = await service.addRelation("PFA-12", { type: "blocks", targetIdentifier: "PFA-9" });
+      const result = await service.addRelation(OWNER, "PFA-12", { type: "blocks", targetIdentifier: "PFA-9" });
 
       expect(result.canonicalIdentifier).toBe("PFA-12");
     });
@@ -539,7 +557,7 @@ describe("IssuesService", () => {
       issues = [issueRow(), target()];
       prisma.issueRelation.create.mockRejectedValue(new Error("connection lost"));
 
-      await expect(service.addRelation("PFA-12", { type: "blocks", targetIdentifier: "PFA-9" })).rejects.toThrow(
+      await expect(service.addRelation(OWNER, "PFA-12", { type: "blocks", targetIdentifier: "PFA-9" })).rejects.toThrow(
         /connection lost/,
       );
     });
@@ -549,10 +567,10 @@ describe("IssuesService", () => {
     it("stamps archivedAt only while it is still null", async () => {
       issues = [issueRow()];
 
-      await service.archive("PFA-12");
+      await service.archive(OWNER, "PFA-12");
 
       const [call] = prisma.issue.updateMany.mock.calls as [{ where: Record<string, unknown> }][];
-      expect(call[0].where).toEqual({ id: "issue-1", archivedAt: null });
+      expect(call[0].where).toEqual({ id: "issue-1", ownerId: OWNER, archivedAt: null });
     });
   });
 
@@ -560,7 +578,7 @@ describe("IssuesService", () => {
     it("stamps archivedAt when asked to archive", async () => {
       issues = [issueRow()];
 
-      await service.update("PFA-12", { archived: true });
+      await service.update(OWNER, "PFA-12", { archived: true });
 
       expect(lastData(prisma.issue.update).archivedAt).toBeInstanceOf(Date);
     });
@@ -571,7 +589,7 @@ describe("IssuesService", () => {
       const original = new Date("2026-01-02T03:04:05.000Z");
       issues = [issueRow({ archivedAt: original })];
 
-      await service.update("PFA-12", { archived: true });
+      await service.update(OWNER, "PFA-12", { archived: true });
 
       expect(lastData(prisma.issue.update).archivedAt).toBe(original);
     });
@@ -579,7 +597,7 @@ describe("IssuesService", () => {
     it("clears archivedAt on a restore", async () => {
       issues = [issueRow({ archivedAt: new Date("2026-01-02T03:04:05.000Z") })];
 
-      await service.update("PFA-12", { archived: false });
+      await service.update(OWNER, "PFA-12", { archived: false });
 
       expect(lastData(prisma.issue.update).archivedAt).toBeNull();
     });
@@ -587,7 +605,7 @@ describe("IssuesService", () => {
     it("leaves the column alone when the field is absent", async () => {
       issues = [issueRow({ archivedAt: new Date("2026-01-02T03:04:05.000Z") })];
 
-      await service.update("PFA-12", { title: "Ship it later" });
+      await service.update(OWNER, "PFA-12", { title: "Ship it later" });
 
       expect(lastData(prisma.issue.update)).toEqual({ title: "Ship it later" });
     });
@@ -601,7 +619,7 @@ describe("IssuesService", () => {
         { epicId: "epic-1", stateId: STARTED.id, _count: { _all: 3 } },
       ]);
 
-      const result = await service.findByIdentifier("PFA-1");
+      const result = await service.findByIdentifier(OWNER, "PFA-1");
 
       expect(result.epicProgress).toEqual({ done: 2, total: 5 });
       expect(prisma.issue.groupBy).toHaveBeenCalledTimes(1);
@@ -610,7 +628,7 @@ describe("IssuesService", () => {
     it("reports zeroes for an epic with no children", async () => {
       issues = [issueRow({ id: "epic-1", identifier: "PFA-1", isEpic: true })];
 
-      const result = await service.findByIdentifier("PFA-1");
+      const result = await service.findByIdentifier(OWNER, "PFA-1");
 
       expect(result.epicProgress).toEqual({ done: 0, total: 0 });
     });
@@ -618,7 +636,7 @@ describe("IssuesService", () => {
     it("stays null for an ordinary issue, without querying for children", async () => {
       issues = [issueRow()];
 
-      const result = await service.findByIdentifier("PFA-12");
+      const result = await service.findByIdentifier(OWNER, "PFA-12");
 
       expect(result.epicProgress).toBeNull();
       expect(prisma.issue.groupBy).not.toHaveBeenCalled();

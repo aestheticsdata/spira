@@ -25,8 +25,9 @@ interface LabelRow {
 export class LabelsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<LabelDto[]> {
+  async findAll(ownerId: string): Promise<LabelDto[]> {
     const labels = await this.prisma.label.findMany({
+      where: { ownerId },
       select: LABEL_SELECT,
       orderBy: { name: "asc" },
     });
@@ -34,29 +35,30 @@ export class LabelsService {
     return labels.map((label) => this.toLabelDto(label));
   }
 
-  async create(dto: CreateLabelDto): Promise<LabelDto> {
-    await this.assertNameAvailable(dto.name);
+  async create(ownerId: string, dto: CreateLabelDto): Promise<LabelDto> {
+    await this.assertNameAvailable(ownerId, dto.name);
 
     const label = await this.prisma.label.create({
-      data: { id: randomUUID(), name: dto.name, color: dto.color },
+      data: { id: randomUUID(), ownerId, name: dto.name, color: dto.color },
       select: LABEL_SELECT,
     });
 
     return this.toLabelDto(label);
   }
 
-  async update(id: string, dto: UpdateLabelDto): Promise<LabelDto> {
-    const existing = await this.prisma.label.findUnique({ where: { id }, select: { id: true } });
+  async update(ownerId: string, id: string, dto: UpdateLabelDto): Promise<LabelDto> {
+    // Another account's label must read as absent, not as forbidden.
+    const existing = await this.prisma.label.findFirst({ where: { id, ownerId }, select: { id: true } });
     if (!existing) {
       throw new NotFoundException("Label not found");
     }
 
     if (dto.name !== undefined) {
-      await this.assertNameAvailable(dto.name, id);
+      await this.assertNameAvailable(ownerId, dto.name, id);
     }
 
     const label = await this.prisma.label.update({
-      where: { id },
+      where: { id, ownerId },
       data: { name: dto.name, color: dto.color },
       select: LABEL_SELECT,
     });
@@ -64,23 +66,23 @@ export class LabelsService {
     return this.toLabelDto(label);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(ownerId: string, id: string): Promise<void> {
     // deleteMany rather than delete: the count tells us whether the row existed
     // without a second round trip, and IssueLabel cascades either way.
-    const { count } = await this.prisma.label.deleteMany({ where: { id } });
+    const { count } = await this.prisma.label.deleteMany({ where: { id, ownerId } });
     if (count === 0) {
       throw new NotFoundException("Label not found");
     }
   }
 
   /**
-   * Guards the unique index on `Label.name`. The comparison is the column's own
-   * case-insensitive collation, so "Bug" and "bug" clash here exactly as they
-   * would in MySQL.
+   * Guards the unique index on `(Label.ownerId, Label.name)`. The comparison is
+   * the column's own case-insensitive collation, so "Bug" and "bug" clash here
+   * exactly as they would in MySQL.
    */
-  private async assertNameAvailable(name: string, exceptId?: string): Promise<void> {
+  private async assertNameAvailable(ownerId: string, name: string, exceptId?: string): Promise<void> {
     const clash = await this.prisma.label.findFirst({
-      where: exceptId ? { name, id: { not: exceptId } } : { name },
+      where: exceptId ? { ownerId, name, id: { not: exceptId } } : { ownerId, name },
       select: { id: true },
     });
 
