@@ -11,8 +11,13 @@ import { RedisService, SESSION_PREFIX } from "@redis/redis.service";
 
 import type { Application } from "express";
 
-/** Rolling TTL: refreshed on every authenticated request. */
-const SESSION_TTL_SECONDS = 8 * 60 * 60;
+/**
+ * Rolling TTL: refreshed on every authenticated request, so a session used at
+ * least once within this window never expires in practice (COS-456). 400 days
+ * is the practical ceiling — modern browsers cap any cookie's Expires/Max-Age
+ * there, regardless of httpOnly.
+ */
+const SESSION_TTL_SECONDS = 400 * 24 * 60 * 60;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
