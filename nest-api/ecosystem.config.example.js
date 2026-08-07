@@ -42,6 +42,22 @@ const config = {
   SPIRA_BACKUP_SERVER_IP: "",
   DEBIAN_OVH_VPS_SSH_USER: "",
   DEBIAN_OVH_VPS_SSH_KEY_PATH: "",
+
+  // --- Zeus cron reporting (COS-447) -----------------------------------------------------------
+  // The backup reports its outcome to Zeus so a failure shows up on `/cron` instead of only in
+  // `pm2 logs`. With the token or the app name unset the client is a silent no-op, by design — the
+  // API runs identically on a laptop with no Zeus in sight.
+
+  ZEUS_INGEST_URL: "http://127.0.0.1:6600/api/cron-runs",
+
+  // The same value as Zeus's own ZEUS_INGEST_TOKEN — copy it from
+  // /var/www/zeus/nest-api/ecosystem.config.js, do not mint a second one.
+  ZEUS_INGEST_TOKEN: "",
+
+  // Spira's slug in Zeus's port registry. It must already exist there: Zeus answers 400 to a report
+  // naming an app it has never heard of, and nothing on this side surfaces that. Crons need no
+  // registration — the row appears by itself on the first report.
+  ZEUS_APP_NAME: "spira",
 };
 
 module.exports = {
