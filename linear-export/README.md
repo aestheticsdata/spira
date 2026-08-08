@@ -8,7 +8,7 @@ thing a future importer bug can be diagnosed against.
 **519 rows, 34 columns, 2.1 MB.** 456 `COS-`, 63 `WEA-`. One header row, `\r\n` line endings, UTF-8
 with no BOM.
 
-`side-file.json` sits beside it and is described at the bottom.
+`side-file.json` and `projects.json` sit beside it and are described at the bottom.
 
 ## Columns, in export order
 
@@ -98,6 +98,51 @@ of which point at COS-416 — one of the 5 orphan rows the import skipped.
 
 `comments` is empty: Linear's CSV carries no comment threads, and a sample of the issues most likely
 to have them had none. Sampled, not proven across all 519.
+
+## The project descriptions and `projects.json`
+
+**The export is issue-level. It carries no project description, and no project field of any kind
+beyond `Project ID` and `Project`** — the name the rows are grouped under. So M2 could not have
+imported them: there is no column to read, and none of the five unrecognised columns is one either.
+Every project landed in Spira with an empty `summary` and `description`, and that is the export's
+shape rather than a mapping bug (SPI-61).
+
+They were pulled from the Linear API instead and committed here as `projects.json`, for the same
+reason the CSV is committed: once the subscription lapses this file is the only copy.
+
+```json
+{ "spiraKey": "ZEU", "linearId": "8fa159ed-…", "name": "Zeus", "url": "https://linear.app/…",
+  "trashed": false, "summary": "Fleet control plane for…", "description": "**Zeus** is the…" }
+```
+
+**10 projects for 9 in Spira.** Linear holds two named `Worldweathr`; the WEA rows all carry
+`Project ID = 5309647f-…`, so the other one — trashed, an earlier draft, six sky conditions instead
+of seven — is recorded with `spiraKey: null` and imported nowhere.
+
+**Three are empty at the source**: `3D engine`, `BKMK` and `PFA` have no summary and no description
+in Linear either. They are written as empty strings rather than left out, so the file says so
+instead of leaving it to be re-derived.
+
+Descriptions are stored **raw, exactly as Linear returned them**, including its
+`<issue id=… href=…>COS-18</issue>` cross-reference markup — three of them in CHT's, 531 characters
+of another tracker's HTML. `nest-api/scripts/backfill-project-descriptions.ts` unwraps those to the
+bare `COS-18` on the way in: Spira's renderer makes a chip out of the identifier itself, and it
+resolves through the legacy column.
+
+```
+pnpm backfill:project-descriptions            # report only, from nest-api/
+pnpm backfill:project-descriptions -- --commit
+```
+
+It reads `SPIRA_API_TOKEN` and goes through the REST API rather than Prisma, so it fills prod and a
+local Spira from the same laptop. Re-running is a no-op: a project that already holds text keeps it
+unless `--force` says otherwise, because a description edited in Spira is newer than Linear's.
+
+**`SPI` has already diverged**, which is what that guard is for. The text Linear held described a
+single-user app that was one Next process talking to Prisma; Spira is neither — it is multi-account
+since SPI-50, and a Next front in front of a Nest API since the split. Its live description was
+rewritten to match the repo. This file keeps Linear's version, because it is a record of what Linear
+held and not of what is true.
 
 ## What the import produced
 

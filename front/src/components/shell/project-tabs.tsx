@@ -20,8 +20,14 @@ export function ProjectTabs({ projectKey, children }: { projectKey: string; chil
           key={tab.href}
           href={tab.href}
           className={cn(
-            "flex h-[25px] items-center rounded-md px-[11px] text-125 hover:bg-surface-active",
-            pathname === tab.href ? "bg-line text-ink-1" : "text-ink-5",
+            // `hover:duration-0` is not a typo: Linear fills the pill the instant
+            // the pointer lands and fades it back out over ~100ms on the way off,
+            // which is the duration on the resting rule, not the hovered one.
+            "flex h-[25px] items-center rounded-md px-[11px] text-125 transition-colors duration-100 hover:duration-0",
+            // Every tab in the group is filled — an inactive one is a darker pill,
+            // not bare text — and hovering one lands it on the active look rather
+            // than somewhere below it, which is what it used to do.
+            pathname === tab.href ? "bg-line text-ink-1" : "bg-surface-hi text-ink-6 hover:bg-line hover:text-ink-1",
           )}
         >
           {tab.label}
