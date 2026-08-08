@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# No database step here, unlike deploy-api.sh: the front never talks to MySQL, it
+# only calls the API. Migrations belong to whoever owns the schema, and running
+# them from two scripts would mean two deploys racing for the same lock. If a
+# release needs a schema change, deploy the API first. (COS-460)
+
 ######################################
 # Configuration
 ######################################
