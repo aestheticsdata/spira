@@ -14,3 +14,9 @@
 .sp-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Chrome paints the square where two scrollbars would meet in solid white on
+   a dark page unless told otherwise. */
+.sp-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}

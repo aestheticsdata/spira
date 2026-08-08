@@ -1,11 +1,11 @@
 import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
+import { ProjectIconButton } from "@components/projects/project-icon-button";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
 import { ProjectTabs } from "@components/shell/project-tabs";
 import { Button } from "@components/ui/button";
 import { ProgressBar } from "@components/ui/progress-pill";
-import { ProjectIcon } from "@components/ui/project-icon";
 import { StateIcon } from "@components/ui/state-icon";
 import { serverFetchOptional } from "@lib/server-api";
 import Link from "next/link";
@@ -46,11 +46,9 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
 
       <div className="sp-scroll min-h-0 flex-1 overflow-y-auto pt-11 pb-20">
         <div className="mx-auto max-w-[720px] px-6">
-          <ProjectIcon
+          <ProjectIconButton
             project={project}
-            size={36}
-            glyph={28}
-            className="mb-[18px] rounded-xl"
+            className="mb-[18px] size-11 rounded-xl border-transparent bg-transparent hover:border-line"
           />
 
           <div className="flex items-baseline gap-3">

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@components/ui/button";
-import { ProjectIcon } from "@components/ui/project-icon";
+import { IconPicker } from "@components/ui/icon-picker";
 import useRequestHelper from "@helpers/useRequestHelper";
 import * as Dialog from "@radix-ui/react-dialog";
 import { FIELD_LIMITS } from "@schemas/field-limits";
@@ -157,27 +157,19 @@ export function SaveViewDialog({
                   Icon
                 </label>
                 <div className="flex items-center gap-2.5">
-                  <span className="grid size-8 flex-none place-items-center rounded-lg border border-line bg-field">
-                    {/* The same glyph a project uses: a Material Symbols
-                        ligature or one emoji, drawn by the same component so a
-                        view and a project cannot look like different species. */}
-                    <ProjectIcon
-                      project={{ icon: icon || "filter_list", color: null, name }}
-                      size={18}
-                      glyph={16}
-                    />
-                  </span>
-                  <input
+                  {/* The picker a project uses, drawn by the same component, so
+                      a view and a project cannot look like different species. */}
+                  <IconPicker
                     id="view-icon"
                     value={icon}
-                    onChange={(event) => setIcon(event.target.value)}
-                    maxLength={FIELD_LIMITS.icon}
-                    spellCheck={false}
-                    placeholder="filter_list"
-                    className={FIELD}
+                    onChange={setIcon}
+                    fallback="filter_list"
+                    label="Choose the view icon"
                   />
+                  <span className={icon === "" ? "text-125 text-ink-8" : "identifier truncate text-125 text-ink-5"}>
+                    {icon === "" ? "None — a funnel is drawn instead" : icon}
+                  </span>
                 </div>
-                <p className="text-11 text-ink-8">A Material Symbols name (filter_list, bolt) or a single emoji.</p>
               </div>
             </div>
 

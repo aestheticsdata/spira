@@ -1,9 +1,9 @@
+import { ProjectIconButton } from "@components/projects/project-icon-button";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
 import { Button } from "@components/ui/button";
 import { DateLabel } from "@components/ui/date-label";
 import { ProgressBar } from "@components/ui/progress-pill";
-import { ProjectIcon } from "@components/ui/project-icon";
 import { StateIcon } from "@components/ui/state-icon";
 import { serverFetch } from "@lib/server-api";
 import Link from "next/link";
@@ -58,17 +58,29 @@ export default async function ProjectsPage() {
           </div>
 
           {projects.map((project) => (
-            <Link
+            /* The row used to be one big <Link>, but the icon now opens the
+               picker (COS-458) and a button cannot legally live inside an
+               anchor. The link is an overlay instead, and the icon button —
+               positioned, later in the DOM — sits above it. Everything else
+               still clicks through to the issues list. */
+            <div
               key={project.id}
-              href={ROUTES.projectIssues.path(project.key)}
-              className="flex h-9 items-center border-b border-line-soft px-4 hover:bg-surface-hover"
+              className="relative flex h-9 items-center border-b border-line-soft px-4 hover:bg-surface-hover"
             >
+              <Link
+                href={ROUTES.projectIssues.path(project.key)}
+                aria-label={`${project.name} issues`}
+                className="absolute inset-0"
+              />
               <div className="flex w-[170px] flex-none items-center gap-2.5">
-                <ProjectIcon
-                  project={project}
-                  size={18}
-                  glyph={16}
-                />
+                <span className="relative">
+                  <ProjectIconButton
+                    project={project}
+                    size={18}
+                    glyph={16}
+                    className="size-7 rounded-md border-transparent bg-transparent hover:border-line hover:bg-surface-active"
+                  />
+                </span>
                 <div className="truncate text-13 font-medium text-ink-2">{project.name}</div>
               </div>
               <div className="w-[92px] flex-none">
@@ -104,7 +116,7 @@ export default async function ProjectsPage() {
                 />
                 {project.status.name}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

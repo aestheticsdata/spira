@@ -1,0 +1,51 @@
+/* react-colorful ships a 200×200 square with a fat hue bar and hard corners.
+   These rules resize it to its two hosts and give it the app's radii; the
+   library's own stylesheet is injected at runtime, so they only need to be
+   more specific than a single class. */
+
+/* The standalone colour popover (project form's Colour field). */
+.react-colorful.sp-colorful {
+  width: 100%;
+  height: 152px;
+  gap: 10px;
+}
+
+.sp-colorful .react-colorful__saturation {
+  border-radius: 7px;
+  border-bottom: none;
+}
+
+.sp-colorful .react-colorful__hue {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.sp-colorful .react-colorful__pointer {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+/* The panel that unfolds inside the icon picker, Linear-style: a wide, short
+   saturation area with the hue ribbon under it. */
+.react-colorful.sp-colorful-panel {
+  width: 100%;
+  height: 132px;
+  gap: 10px;
+}
+
+.sp-colorful-panel .react-colorful__saturation {
+  border-radius: 7px;
+  border-bottom: none;
+}
+
+.sp-colorful-panel .react-colorful__hue {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.sp-colorful-panel .react-colorful__pointer {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}

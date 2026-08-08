@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  COLOR_PATTERN,
-  DEFAULT_PROJECT_COLOR,
   hasChanges,
   projectFormError,
   projectKeyError,
@@ -11,10 +9,12 @@ import {
 } from "@components/projects/project-form.util";
 import { ROUTES } from "@components/shared/config/constants";
 import { Button } from "@components/ui/button";
-import { ProjectIcon } from "@components/ui/project-icon";
+import { ColorPicker } from "@components/ui/color-picker";
+import { IconPicker } from "@components/ui/icon-picker";
 import { StateIcon } from "@components/ui/state-icon";
 import useRequestHelper from "@helpers/useRequestHelper";
 import { PRIORITY_NAMES } from "@lib/status";
+import { cn } from "@lib/utils";
 import { FIELD_LIMITS } from "@schemas/field-limits";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -215,7 +215,6 @@ export function ProjectForm({
     }
   };
 
-  const preview = { icon: values.icon || null, color: values.color || null, name: values.name };
   const selectedState = states.find((state) => state.id === values.statusId);
 
   return (
@@ -275,25 +274,23 @@ export function ProjectForm({
             <Field
               id="project-icon"
               label="Icon"
-              hint="A Material Symbols name (graph_3, rocket_launch) or a single emoji."
+              hint="Every Material Symbols glyph and every emoji, searchable — nothing to type."
             >
               <div className="flex items-center gap-2.5">
-                <span className="grid size-8 flex-none place-items-center rounded-lg border border-line bg-field">
-                  <ProjectIcon
-                    project={preview}
-                    size={18}
-                    glyph={16}
-                  />
-                </span>
-                <input
+                <IconPicker
                   id="project-icon"
                   value={values.icon}
-                  onChange={(event) => set("icon", event.target.value)}
-                  maxLength={FIELD_LIMITS.icon}
-                  spellCheck={false}
-                  placeholder="folder"
-                  className={FIELD}
+                  onChange={(icon) => set("icon", icon)}
+                  color={values.color}
+                  onColorChange={(color) => set("color", color)}
+                  label="Choose the project icon"
                 />
+                {/* The stored value, shown because it is what the API holds and
+                    what the seeder and the importer write — not because anyone
+                    has to type it. */}
+                <span className={cn("truncate text-125", values.icon === "" ? "text-ink-8" : "identifier text-ink-5")}>
+                  {values.icon === "" ? "None — a folder is drawn instead" : values.icon}
+                </span>
               </div>
             </Field>
 
@@ -302,12 +299,9 @@ export function ProjectForm({
               label="Colour"
             >
               <div className="flex items-center gap-2.5">
-                <input
-                  type="color"
-                  aria-label="Project colour"
-                  value={COLOR_PATTERN.test(values.color) ? values.color : DEFAULT_PROJECT_COLOR}
-                  onChange={(event) => set("color", event.target.value)}
-                  className="size-8 flex-none cursor-pointer rounded-lg border border-line bg-field p-1"
+                <ColorPicker
+                  value={values.color}
+                  onChange={(color) => set("color", color)}
                 />
                 <input
                   id="project-color"
