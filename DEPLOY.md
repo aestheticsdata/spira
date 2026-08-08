@@ -167,11 +167,12 @@ sudo sed -i 's/^# *bind 127.0.0.1/bind 127.0.0.1/' /etc/redis/redis.conf && sudo
 sudo mkdir -p /var/www/spira && sudo chown -R debian:debian /var/www/spira
 ```
 
-Then, once the API is on the server for the first time:
+Then, once the API is on the server for the first time. The schema is already there — the deploy
+script migrates on every run, including the first (COS-460) — so this only creates the account:
 
 ```bash
 export PATH="$HOME/.local/share/pnpm:$PATH"   # pnpm is not on a non-interactive PATH
-cd /var/www/spira/nest-api && pnpm migrate:deploy && pnpm seed -- --username cosmokaat@protonmail.com --empty
+cd /var/www/spira/nest-api && pnpm seed -- --username cosmokaat@protonmail.com --empty
 ```
 
 The seeder prints the generated password once. There is no signup UI — running the seeder is the only
@@ -223,8 +224,37 @@ Each script uploads to `…-releases/release-<timestamp>-<branch>-<hash>`, insta
 swaps it into place and reloads PM2. A failure after the swap auto-rolls-back; a manual rollback is
 `./front/deploy-front.sh rollback`.
 
-Database migrations are not run by the deploy script — run `pnpm migrate:deploy` on the server yourself
-when a release carries one, so a schema change is never an accident of a routine deploy.
+### Migrations
+
+`deploy-api.sh` runs `prisma migrate deploy` itself, after the build and before the PM2 reload, so the
+new code comes up onto a schema it already agrees with. There is no follow-up command (COS-460). A
+deploy carrying no new migration prints that there is nothing to apply and continues.
+
+This is not zero-downtime, and it is worth knowing which way it fails: for the few seconds between the
+migration and the reload, the *old* process is serving against the *new* schema. Additive migrations —
+a new column the old client never selects — are harmless there, which is the common case. A `DROP` or a
+rename will throw for the length of the reload. No ordering avoids both directions without downtime;
+this one's common case is harmless, and it replaces a window that used to last until somebody remembered.
+
+It reads the production `DATABASE_URL` out of `env_production` in the server's `ecosystem.config.js`,
+under the app name `spira-nest-api` — **not** from `nest-api/.env`. The `.env` the deploy script sources
+locally is your development database, and exists only because `prisma generate` refuses to run without
+the variable set. If the ecosystem file has no URL under that name, the deploy stops rather than guessing.
+
+A failed migration aborts before the reload: the release is rolled back and the previous version keeps
+serving. Prisma records the failure in `_prisma_migrations`, which blocks later deploys until you clear
+it on the server:
+
+```bash
+cd /var/www/spira/nest-api && pnpm prisma migrate resolve --rolled-back <migration_name>
+```
+
+`deploy-front.sh` has no migration step — the front never touches the database. Deploy the API first
+when a release changes the schema.
+
+**Rollback restores code, not schema.** Prisma has no down-migrations, so `./deploy-api.sh rollback`
+after a schema change leaves the new schema in place under the old code. Both rollback paths say so as
+they run. When old code cannot run against the migrated schema, roll forward.
 
 ## Backups
 

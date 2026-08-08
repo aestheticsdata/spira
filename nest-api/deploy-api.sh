@@ -17,7 +17,14 @@ NEST_RELEASES_DIR="$API_ROOT/nest-api-releases"
 # Local project dir (= nest-api/, where this script now lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Load DATABASE_URL from nest-api/.env (required for prisma generate during Nest build)
+# pm2 app name, and the key the migration step looks under to find the production
+# DATABASE_URL in the server's ecosystem.config.js.
+PM2_APP_NAME="spira-nest-api"
+
+# Load DATABASE_URL from nest-api/.env. This is the *laptop's* development database,
+# and it is here only because `prisma generate` refuses to run without the variable
+# set — nothing in the build ever connects with it. It deliberately does not reach
+# `migrate deploy`, which reads the production URL off the server (COS-460).
 NEST_ENV="$SCRIPT_DIR/.env"
 if [ -f "$NEST_ENV" ]; then
   set -a
@@ -99,6 +106,8 @@ deploy() {
         log "✅ Auto rollback succeeded"
         log "➡️  Reloading API with pm2 after rollback"
         restart_pm2
+        log "⚠️  Code only — the database was not rolled back. Prisma has no down-"
+        log "    migrations, so any migration this deploy applied is still applied."
       else
         log "❌ Auto rollback failed, manual intervention required"
       fi
@@ -289,13 +298,12 @@ EOF
   SWITCH_DONE="true"
 
   ######################################
-  # Fresh install + build + restart via pm2
+  # Fresh install + build
   ######################################
   log "➡️  Installing dependencies and building on server"
 
   ssh "$REMOTE_USER_HOST" \
     NEST_DIR="$NEST_DIR" \
-    API_ROOT="$API_ROOT" \
     DATABASE_URL="$DATABASE_URL" \
     'bash -s' << 'EOF'
 set -Eeuo pipefail
@@ -307,17 +315,78 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 1
 fi
 
-# Nest: install + build (DATABASE_URL needed for prisma generate)
+# Nest: install + build. DATABASE_URL is exported only because `prisma generate`
+# demands the variable exist — it is the dev URL, and generate never connects.
 cd "$NEST_DIR"
 rm -rf node_modules dist
 pnpm install
 export DATABASE_URL
 pnpm build
-
-# Start or reload Nest with pm2
-cd "$API_ROOT"
-pm2 reload ecosystem.config.js --env production 2>/dev/null || pm2 start ecosystem.config.js --env production
 EOF
+
+  ######################################
+  # Database migrations
+  ######################################
+  # After install, because the prisma CLI is a devDependency; after build, so a
+  # broken build fails before the schema moves; and before the pm2 reload below,
+  # because the new code coming up onto an already-migrated schema is the point.
+  #
+  # This does not make the deploy seamless, and the honest version is worth
+  # writing down: between this step and the reload finishing, the *old* process
+  # is serving against the *new* schema. That is a few seconds, and it is benign
+  # for the additive migrations that are the common case — an added column the
+  # old client does not select. A destructive one (drop, rename) will throw for
+  # the length of the reload. There is no ordering that avoids both directions
+  # without downtime; this is the one whose common case is harmless, and it
+  # replaces a window that used to last until somebody remembered.
+  #
+  # A failure here exits non-zero inside the ERR trap, so on_error rolls the
+  # release back and pm2 is never reloaded: the previous release stays up on the
+  # schema it was written against. (COS-460)
+  log "➡️  Applying database migrations"
+
+  ssh "$REMOTE_USER_HOST" \
+    NEST_DIR="$NEST_DIR" \
+    ECOSYSTEM_REMOTE="$API_ROOT/ecosystem.config.js" \
+    PM2_APP_NAME="$PM2_APP_NAME" \
+    'bash -s' << 'EOF'
+set -Eeuo pipefail
+
+export PATH="$HOME/.local/share/pnpm:$PATH"
+
+# The production URL comes out of the pm2 ecosystem file and from nowhere else.
+# Both nearby candidates are wrong: the deploy script's own DATABASE_URL is the
+# laptop's dev database, and $NEST_DIR/.env is the server's old env carried
+# forward into the release — a file the API itself no longer reads.
+PROD_DATABASE_URL=$(node -p \
+  'const c = require(process.env.ECOSYSTEM_REMOTE); const a = (c.apps || []).find(x => x.name === process.env.PM2_APP_NAME); (a && a.env_production && a.env_production.DATABASE_URL) || ""' || true)
+
+if [ -z "$PROD_DATABASE_URL" ]; then
+  echo "❌ ERROR: no env_production.DATABASE_URL for pm2 app '$PM2_APP_NAME' in $ECOSYSTEM_REMOTE" >&2
+  echo "   Refusing to migrate rather than falling back to a URL that may point elsewhere." >&2
+  exit 1
+fi
+
+cd "$NEST_DIR"
+
+# Passed in the command's environment, never on its command line: the URL carries
+# the database password and `ps` shows arguments. prisma.config.ts pulls in dotenv,
+# which does not override an already-set variable, so this beats the release .env.
+if ! DATABASE_URL="$PROD_DATABASE_URL" pnpm migrate:deploy; then
+  echo "❌ ERROR: prisma migrate deploy failed — pm2 will not be reloaded" >&2
+  echo "   A migration that failed partway is recorded as failed in _prisma_migrations" >&2
+  echo "   and blocks every later deploy until it is resolved on the server:" >&2
+  echo "     cd $NEST_DIR && pnpm prisma migrate resolve --rolled-back <migration_name>" >&2
+  exit 1
+fi
+EOF
+
+  ######################################
+  # Restart via pm2
+  ######################################
+  log "➡️  Reloading API with pm2"
+
+  restart_pm2
 
   trap - ERR
 
@@ -326,7 +395,7 @@ EOF
   log "✅ API deployment completed successfully"
   log "ℹ️  Nest API (port 6700) is running"
   log "ℹ️  Previous version is available in: $NEST_BACKUP_DIR"
-  log "ℹ️  You can manually rollback with: ./deploy-api.sh rollback"
+  log "ℹ️  You can manually rollback with: ./deploy-api.sh rollback (code only, not schema)"
 }
 
 rollback() {
@@ -341,6 +410,9 @@ cd "$API_ROOT"
 pm2 reload ecosystem.config.js --env production 2>/dev/null || pm2 start ecosystem.config.js --env production
 EOF
     log "✅ Manual API rollback completed. Previous version is now live."
+    log "⚠️  This restores code, not schema. Prisma has no down-migrations, so a"
+    log "    migration applied by the deploy you just undid is still applied. If the"
+    log "    restored code cannot run against it, roll forward instead of back."
   else
     log "❌ Rollback failed. Check server state manually."
     exit 1
