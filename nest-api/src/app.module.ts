@@ -17,6 +17,7 @@ import { IssuesModule } from "@issues/issues.module";
 import { SearchModule } from "@search/search.module";
 import { ViewsModule } from "@views/views.module";
 import { TokensModule } from "@tokens/tokens.module";
+import { MigrationModule } from "@migration/migration.module";
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { TokensModule } from "@tokens/tokens.module";
     SearchModule,
     ViewsModule,
     TokensModule,
+    MigrationModule,
   ],
   controllers: [AppController],
 })

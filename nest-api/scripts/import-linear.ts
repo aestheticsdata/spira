@@ -22,7 +22,6 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { randomUUID } from "node:crypto";
 
 // --- inline .env loader (mirrors seed.ts; dotenv is a devDependency of nothing) ---
 function loadEnv(): void {
@@ -42,16 +41,16 @@ import { parse } from "csv-parse/sync";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "../generated/prisma/client";
 
-import { readRow, resolveColumns } from "@migration/linear-columns.util";
-import { labelColourFor } from "@migration/linear-vocabulary";
-import { errorsIn, planImport, warningsIn, writeOrder } from "@migration/linear-plan.util";
+import { resolveColumns } from "@migration/linear-columns.util";
+import { errorsIn, planImport, warningsIn } from "@migration/linear-plan.util";
+import { withoutOrphans } from "@migration/linear-orphans.util";
+import { readSideFile } from "@migration/linear-side-file.util";
+import { readExisting, writeImport } from "@migration/linear-write.util";
 
-import type { ColumnResolution, LinearField } from "@migration/linear-columns.util";
-import type { ExistingWorkspace, ImportPlan, ImportReport } from "@migration/linear-plan.util";
+import type { ColumnResolution } from "@migration/linear-columns.util";
+import type { ImportReport } from "@migration/linear-plan.util";
+import type { SideFile } from "@migration/linear-side-file.util";
 
-/** Long enough for a few thousand rows; the whole import is one transaction. */
-const TRANSACTION_TIMEOUT_MS = 300_000;
-const TRANSACTION_MAX_WAIT_MS = 30_000;
 /** How many examples of a repeated problem are printed before "and N more". */
 const SAMPLE = 10;
 
@@ -200,117 +199,6 @@ async function resolveOwnerId(prisma: PrismaClient, username: string | null): Pr
 }
 
 // --------------------------------------------------------------------------
-// The side-file: relations and comments the CSV cannot carry
-// --------------------------------------------------------------------------
-interface SideFile {
-  relations: { from: string; type: "blocks" | "related"; to: string }[];
-  comments: { issue: string; body: string; author?: string; createdAt?: string; updatedAt?: string }[];
-}
-
-/**
- * Read defensively rather than trustingly: this file is assembled by hand from
- * the connector at cutover, so a typo in it is likelier than a bug here, and it
- * should say which entry it choked on rather than throwing a cast error.
- */
-function readSideFile(path: string): { side: SideFile; problems: string[] } {
-  const problems: string[] = [];
-  const side: SideFile = { relations: [], comments: [] };
-
-  const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-  if (typeof parsed !== "object" || parsed === null) {
-    return { side, problems: ["the side-file is not a JSON object"] };
-  }
-
-  const raw = parsed as { relations?: unknown; comments?: unknown };
-
-  if (Array.isArray(raw.relations)) {
-    raw.relations.forEach((entry: unknown, position) => {
-      const r = entry as { from?: unknown; type?: unknown; to?: unknown };
-      if (typeof r.from !== "string" || typeof r.to !== "string") {
-        problems.push(`relations[${position}] needs string "from" and "to"`);
-        return;
-      }
-      if (r.type !== "blocks" && r.type !== "related") {
-        problems.push(`relations[${position}] type must be "blocks" or "related", not ${JSON.stringify(r.type)}`);
-        return;
-      }
-      side.relations.push({ from: r.from.toUpperCase(), type: r.type, to: r.to.toUpperCase() });
-    });
-  } else if (raw.relations !== undefined) {
-    problems.push(`"relations" must be an array`);
-  }
-
-  if (Array.isArray(raw.comments)) {
-    raw.comments.forEach((entry: unknown, position) => {
-      const c = entry as Record<string, unknown>;
-      if (typeof c.issue !== "string" || typeof c.body !== "string") {
-        problems.push(`comments[${position}] needs string "issue" and "body"`);
-        return;
-      }
-      side.comments.push({
-        issue: c.issue.toUpperCase(),
-        body: c.body,
-        author: typeof c.author === "string" ? c.author : undefined,
-        createdAt: typeof c.createdAt === "string" ? c.createdAt : undefined,
-        updatedAt: typeof c.updatedAt === "string" ? c.updatedAt : undefined,
-      });
-    });
-  } else if (raw.comments !== undefined) {
-    problems.push(`"comments" must be an array`);
-  }
-
-  return { side, problems };
-}
-
-// --------------------------------------------------------------------------
-// Orphans — rows belonging to no project
-// --------------------------------------------------------------------------
-interface Orphan {
-  line: number;
-  id: string;
-  title: string;
-}
-
-/**
- * Splits off the rows with an empty `Project` cell.
- *
- * Linear allows an issue to sit outside every project, and creates several such itself: the
- * onboarding tickets a workspace is born with. Spira has no home for one — `Issue.projectId` is
- * `NOT NULL` — so the planner is right to call the row malformed. What it cannot do is let the
- * operator past it, and one abandoned "Get familiar with Linear" is otherwise enough to refuse a
- * five-hundred-issue migration with no way through but hand-editing the export.
- *
- * Opt-in, and never silent: every dropped row is printed with its line and identifier, because
- * "skipped" and "lost" are the same thing to an issue that nobody notices is missing.
- */
-function withoutOrphans(
-  body: string[][],
-  index: Partial<Record<LinearField, number>>,
-): { rows: string[][]; orphans: Orphan[] } {
-  const rows: string[][] = [];
-  const orphans: Orphan[] = [];
-
-  body.forEach((row, position) => {
-    // Blank lines are the planner's business, not this function's — it counts them out of `rowsRead`
-    // and would otherwise report a file's trailing newline as a lost issue.
-    if (row.every((cell) => (cell ?? "").trim() === "")) {
-      rows.push(row);
-      return;
-    }
-
-    const cells = readRow(row, index);
-    if (cells.project === "") {
-      // +2: one for the header, one because a line number is 1-based.
-      orphans.push({ line: position + 2, id: cells.id, title: cells.title });
-      return;
-    }
-    rows.push(row);
-  });
-
-  return { rows, orphans };
-}
-
-// --------------------------------------------------------------------------
 // Reporting
 // --------------------------------------------------------------------------
 const rule = (title: string): void => console.log(`\n── ${title} ${"─".repeat(Math.max(0, 66 - title.length))}`);
@@ -404,187 +292,6 @@ function printReport(report: ImportReport): void {
 }
 
 // --------------------------------------------------------------------------
-// Writing
-// --------------------------------------------------------------------------
-async function readExisting(prisma: PrismaClient, ownerId: string): Promise<ExistingWorkspace> {
-  const [issues, projects] = await Promise.all([
-    prisma.issue.findMany({ where: { ownerId }, select: { identifier: true, legacyIdentifier: true } }),
-    prisma.project.findMany({ where: { ownerId }, select: { key: true, issueCounter: true } }),
-  ]);
-
-  return {
-    identifiers: new Set(issues.map((issue) => issue.identifier)),
-    legacyIdentifiers: new Set(
-      issues.map((issue) => issue.legacyIdentifier).filter((value): value is string => value !== null),
-    ),
-    counters: new Map(projects.map((project) => [project.key, project.issueCounter])),
-  };
-}
-
-async function write(prisma: PrismaClient, ownerId: string, plan: ImportPlan, side: SideFile | null): Promise<void> {
-  const states = await prisma.workflowState.findMany({ select: { id: true, name: true } });
-  const stateIds = new Map(states.map((state) => [state.name, state.id]));
-
-  const missingStates = [...new Set(plan.issues.map((issue) => issue.state))].filter((name) => !stateIds.has(name));
-  if (missingStates.length > 0) {
-    throw new Error(
-      `The workspace has no state named ${missingStates.join(", ")}. Run \`pnpm seed\` first — ` +
-        `the importer maps onto the seeded six, it does not create them.`,
-    );
-  }
-
-  await prisma.$transaction(
-    async (tx) => {
-      // --- projects: matched on key, never overwritten ---------------------
-      // An existing project's name, icon and colour are the workspace's own and
-      // outrank the export's. Only a key with nothing behind it is created.
-      const projectIds = new Map<string, string>();
-      const lastPosition = await tx.project.aggregate({ where: { ownerId }, _max: { position: true } });
-      let position = (lastPosition._max.position ?? -1) + 1;
-      const backlogId = stateIds.get("Backlog") as string;
-
-      for (const project of plan.report.byProject) {
-        const existing = await tx.project.findUnique({
-          where: { ownerId_key: { ownerId, key: project.key } },
-          select: { id: true },
-        });
-        if (existing) {
-          projectIds.set(project.key, existing.id);
-          continue;
-        }
-        const created = await tx.project.create({
-          data: {
-            id: randomUUID(),
-            ownerId,
-            key: project.key,
-            name: project.name.slice(0, 120),
-            statusId: backlogId,
-            position: position++,
-          },
-          select: { id: true },
-        });
-        projectIds.set(project.key, created.id);
-      }
-
-      // --- labels: created on the fly, preserving names --------------------
-      const labelIds = new Map<string, string>();
-      for (const label of plan.report.labels) {
-        const row = await tx.label.upsert({
-          where: { ownerId_name: { ownerId, name: label.name } },
-          update: {},
-          create: { id: randomUUID(), ownerId, name: label.name, color: labelColourFor(label.name) },
-          select: { id: true },
-        });
-        labelIds.set(label.name, row.id);
-      }
-
-      // --- issues ----------------------------------------------------------
-      const issueIds = new Map<string, string>();
-      for (const issue of plan.issues) {
-        issueIds.set(issue.legacyIdentifier, randomUUID());
-      }
-
-      // Epics first — see `writeOrder`. Writing `epicId` in a second pass
-      // instead would restamp every child's `updatedAt`, which is `@updatedAt`.
-      await tx.issue.createMany({
-        data: writeOrder(plan.issues).map((issue) => ({
-          id: issueIds.get(issue.legacyIdentifier) as string,
-          ownerId,
-          projectId: projectIds.get(issue.projectKey) as string,
-          number: issue.number,
-          identifier: issue.identifier,
-          legacyIdentifier: issue.legacyIdentifier,
-          title: issue.title.slice(0, 255),
-          description: issue.description,
-          stateId: stateIds.get(issue.state) as string,
-          priority: issue.priority,
-          isEpic: issue.isEpic,
-          epicId: issue.epicOf === null ? null : (issueIds.get(issue.epicOf) ?? null),
-          sortOrder: issue.sortOrder,
-          createdAt: issue.createdAt,
-          updatedAt: issue.updatedAt,
-          completedAt: issue.completedAt,
-          canceledAt: issue.canceledAt,
-          archivedAt: issue.archivedAt,
-        })),
-      });
-
-      const pairs = plan.issues.flatMap((issue) =>
-        issue.labels.map((label) => ({
-          issueId: issueIds.get(issue.legacyIdentifier) as string,
-          labelId: labelIds.get(label) as string,
-        })),
-      );
-      await tx.issueLabel.createMany({ data: pairs, skipDuplicates: true });
-
-      // --- counters --------------------------------------------------------
-      // Never lowered: `Math.max` guards the case of importing into a project
-      // that already handed out a higher number than anything in this export.
-      for (const project of plan.report.byProject) {
-        const highest = plan.issues
-          .filter((issue) => issue.projectKey === project.key)
-          .reduce((max, issue) => Math.max(max, issue.number), 0);
-        const current = await tx.project.findUnique({
-          where: { ownerId_key: { ownerId, key: project.key } },
-          select: { issueCounter: true },
-        });
-        await tx.project.update({
-          where: { ownerId_key: { ownerId, key: project.key } },
-          data: { issueCounter: Math.max(current?.issueCounter ?? 0, highest) },
-        });
-      }
-
-      // --- the side-file, if one was taken ---------------------------------
-      if (side) {
-        const relations = side.relations
-          .map((relation) => {
-            let fromIssueId = issueIds.get(relation.from);
-            let toIssueId = issueIds.get(relation.to);
-            if (!fromIssueId || !toIssueId || fromIssueId === toIssueId) return null;
-            // `related` is symmetric — normalised on the lower id, as the API does.
-            if (relation.type === "related" && fromIssueId > toIssueId) {
-              [fromIssueId, toIssueId] = [toIssueId, fromIssueId];
-            }
-            return { id: randomUUID(), fromIssueId, toIssueId, type: relation.type };
-          })
-          .filter((row): row is NonNullable<typeof row> => row !== null);
-        await tx.issueRelation.createMany({ data: relations, skipDuplicates: true });
-
-        const comments = side.comments
-          .map((comment) => {
-            const issueId = issueIds.get(comment.issue);
-            if (!issueId) return null;
-            // `Comment.createdAt` and `updatedAt` are both non-nullable, so an
-            // unreadable one has to become *something*. Every branch is guarded
-            // rather than only the first: an `Invalid Date` reaching Prisma is
-            // a thrown transaction at the end of a long import.
-            const usable = (value: string | undefined, fallback: Date): Date => {
-              if (value === undefined) return fallback;
-              const parsed = new Date(value);
-              return Number.isNaN(parsed.getTime()) ? fallback : parsed;
-            };
-            const createdAt = usable(comment.createdAt, new Date());
-            return {
-              id: randomUUID(),
-              issueId,
-              parentId: null,
-              body: comment.body,
-              authorName: (comment.author ?? "cosmokaat").slice(0, 80),
-              createdAt,
-              updatedAt: usable(comment.updatedAt, createdAt),
-            };
-          })
-          .filter((row): row is NonNullable<typeof row> => row !== null);
-        await tx.comment.createMany({ data: comments, skipDuplicates: true });
-
-        console.log(`\n   side-file: ${relations.length} relations, ${comments.length} comments`);
-      }
-    },
-    { timeout: TRANSACTION_TIMEOUT_MS, maxWait: TRANSACTION_MAX_WAIT_MS },
-  );
-}
-
-// --------------------------------------------------------------------------
 // Main
 // --------------------------------------------------------------------------
 async function main(): Promise<void> {
@@ -643,7 +350,7 @@ async function main(): Promise<void> {
 
   let side: SideFile | null = null;
   if (opts.sideFile) {
-    const read = readSideFile(opts.sideFile);
+    const read = readSideFile(readFileSync(opts.sideFile, "utf8"));
     rule("Side-file");
     console.log(`   ${read.side.relations.length} relations, ${read.side.comments.length} comments`);
     if (read.problems.length > 0) {
@@ -697,8 +404,11 @@ async function main(): Promise<void> {
     }
 
     console.log(`\n   Writing…`);
-    await write(prisma, ownerId, plan, side);
-    console.log(`   Done. ${plan.issues.length} issues imported.`);
+    const written = await writeImport(prisma, ownerId, plan, side);
+    if (side) {
+      console.log(`   side-file: ${written.relations} relations, ${written.comments} comments`);
+    }
+    console.log(`   Done. ${written.issues} issues imported.`);
   } finally {
     await prisma.$disconnect();
   }

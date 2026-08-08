@@ -65,6 +65,21 @@ cd nest-api && pnpm lint && pnpm test
 cd front && pnpm lint && pnpm test
 ```
 
+## Importing from Linear
+
+The cutover import runs from **Settings → Import from Linear**: pick the CSV export, read the dry
+run, type `import`. Nothing is written until that second step, and the commit refuses any file whose
+report you have not just read.
+
+The same import is a CLI, for a large export or a server with no app running yet:
+
+```bash
+cd nest-api && pnpm import:linear -- <export.csv> --username <account> --skip-orphans
+```
+
+Both go through `nest-api/src/migration`, so they cannot disagree. See
+[nest-api/scripts/import-guide.md](nest-api/scripts/import-guide.md).
+
 ## Icons
 
 Project and saved-view icons are Material Symbols ligature names or single emoji, and the picker
