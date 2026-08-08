@@ -8,6 +8,7 @@
 /* Base layer + component styles */
 @import "./base.css";
 @import "./components/scroll.css";
+@import "./components/color-picker.css";
 
 /* ============================================================
    Tailwind v4 theme — CSS-first. `inline` because every value

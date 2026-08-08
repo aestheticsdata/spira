@@ -65,6 +65,20 @@ cd nest-api && pnpm lint && pnpm test
 cd front && pnpm lint && pnpm test
 ```
 
+## Icons
+
+Project and saved-view icons are Material Symbols ligature names or single emoji, and the picker
+searches a generated index of both — 3,896 glyphs and 1,906 emoji, committed under
+`front/src/lib/icons`. It is code-split, so it downloads the first time somebody opens the picker
+and never on a page load.
+
+Regenerate it only on purpose — it pins the icon set, and a name that stops existing is a project
+whose icon stops drawing:
+
+```bash
+cd front && pnpm icons:generate
+```
+
 ## Deploying
 
 See [DEPLOY.md](DEPLOY.md). Two PM2 processes behind one nginx vhost on `spira.1991computer.com`.
