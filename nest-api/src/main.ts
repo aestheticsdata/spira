@@ -1,7 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { ConfigService } from "@nestjs/config";
 import { ValidationPipe } from "@nestjs/common";
-import { Request, Response, NextFunction } from "express";
+import { json, urlencoded, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { RedisStore } from "connect-redis";
 import { AppModule } from "./app.module";
@@ -19,9 +19,25 @@ import type { Application } from "express";
  */
 const SESSION_TTL_SECONDS = 400 * 24 * 60 * 60;
 
+/**
+ * The Linear CSV arrives as text in a JSON body (COS-455), and a real export is
+ * far past the 100kb express defaults to. Raised for that one path rather than
+ * globally: every other endpoint takes a small object, and a megabyte ceiling
+ * on all of them is free surface for nothing.
+ */
+const IMPORT_BODY_LIMIT = "24mb";
+const DEFAULT_BODY_LIMIT = "1mb";
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Nest's own parsers are declined so the two below can be registered in this
+  // order; `body-parser` marks a request it has read, so the general pair that
+  // follows leaves an already-parsed import body alone.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   (app.getHttpAdapter().getInstance() as Application).set("trust proxy", 1);
+
+  app.use("/api/migration", json({ limit: IMPORT_BODY_LIMIT }));
+  app.use(json({ limit: DEFAULT_BODY_LIMIT }));
+  app.use(urlencoded({ extended: true, limit: DEFAULT_BODY_LIMIT }));
 
   const redisService = app.get<RedisService>(RedisService);
   const redisStore = new RedisStore({

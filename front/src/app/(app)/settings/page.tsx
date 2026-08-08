@@ -1,5 +1,6 @@
 import { ChangePasswordForm } from "@app/(app)/settings/change-password-form";
 import { LabelList } from "@app/(app)/settings/label-list";
+import { LinearImport } from "@app/(app)/settings/linear-import";
 import { TokenList } from "@app/(app)/settings/token-list";
 import { AppHeader } from "@components/shell/app-header";
 import { displayName, initials } from "@lib/account";
@@ -115,6 +116,8 @@ export default async function SettingsPage() {
           <TokenList tokens={tokens} />
 
           <LabelList labels={labels} />
+
+          <LinearImport />
         </div>
       </div>
     </>

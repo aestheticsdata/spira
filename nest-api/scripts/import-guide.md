@@ -1,7 +1,32 @@
 # Import guide — `scripts/import-linear.ts`
 
-Turns the Linear CSV export (`M1`, COS-252) into the Spira workspace. A CLI script, not a UI: it
-runs a handful of times at cutover and then never again.
+Turns the Linear CSV export (`M1`, COS-252) into the Spira workspace. It runs a handful of times at
+cutover and then never again.
+
+## Two front doors, one importer
+
+Since COS-455 the same import runs from **Settings → Import from Linear**: pick the CSV, read the
+dry run, type `import`. It is the same code — `POST /api/migration/linear/preview` and `/commit` are
+a shell around `src/migration/*`, which is where the import lives. Neither door has logic the other
+lacks, and both were verified to write byte-for-byte the same workspace from the same file.
+
+Use whichever suits. The screen is easier to read and needs no shell on the server; the CLI is what
+you want when the export is enormous, when you want the report in a file, or when the app is not
+running yet.
+
+Everything below describes the CLI. The flags map onto the screen one for one:
+
+| CLI | Settings |
+| --- | -------- |
+| `--username` | the account you are signed in as, always — there is no field, and no way to write into someone else's workspace |
+| `--commit` | the **Import** button, behind a typed confirmation. The dry run is what the page does on its own |
+| `--skip-orphans` | the "Skip issues that belong to no project" tick, on by default |
+| `--allow-continued-numbering` | the tick that appears *only* when a project already holds issues, and only after the dry run has said so |
+| `--side-file` | the second file picker |
+
+One difference worth knowing: the endpoint takes the CSV twice, once to preview and once to commit,
+and refuses the commit if the file's checksum is not the one the report was computed from. There is
+no way to commit an import whose report you did not read.
 
 ## Command
 

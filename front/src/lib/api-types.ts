@@ -153,3 +153,52 @@ export interface AuthenticatedUserDto {
   username: string;
   csrfToken: string;
 }
+
+/* ------------------------------------------------------- Linear CSV import */
+
+/**
+ * The dry-run report (COS-455), mirroring `nest-api/src/migration/dto/
+ * import-response.interface.ts`. `errors` and `warnings` are the very lines
+ * `pnpm import:linear` prints, computed by the same functions, so the terminal
+ * and the screen cannot disagree about whether an export is importable.
+ */
+export interface ImportPreviewDto {
+  /** Binds a later commit to this exact file. */
+  checksum: string;
+  target: string;
+  columns: {
+    read: { field: string; header: string }[];
+    ignored: string[];
+    unrecognised: string[];
+    missingRequired: string[];
+    duplicated: { field: string; headers: string[] }[];
+  };
+  orphans: { line: number; id: string; title: string }[];
+  skippedOrphans: boolean;
+  sideFile: { relations: number; comments: number; problems: string[] } | null;
+  report: ImportReportDto;
+  errors: string[];
+  warnings: string[];
+  clean: boolean;
+  continuedNumbering: { key: string; from: number }[];
+}
+
+/** Only the parts of the API's `ImportReport` this UI renders. */
+export interface ImportReportDto {
+  rowsRead: number;
+  rowsPlanned: number;
+  byProject: { key: string; name: string; names: string[]; count: number; first: string; last: string }[];
+  byState: { state: string; count: number }[];
+  labels: { name: string; count: number }[];
+  epics: number;
+  epicChildren: number;
+  continuedNumbering: { key: string; from: number }[];
+}
+
+export interface ImportResultDto {
+  issues: number;
+  projects: number;
+  labels: number;
+  relations: number;
+  comments: number;
+}
