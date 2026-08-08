@@ -58,6 +58,18 @@ const config = {
   // naming an app it has never heard of, and nothing on this side surfaces that. Crons need no
   // registration — the row appears by itself on the first report.
   ZEUS_APP_NAME: "spira",
+
+  // --- Zeus deploy reporting (COS-459) ---------------------------------------------------------
+  // The odd one out: nothing in the API reads this. `deploy-api.sh` and `deploy-front.sh` run on a
+  // laptop, ssh to ks-b, and `sed` the value out of this file there — so it is parked here for them
+  // rather than injected into the process. It shares ZEUS_INGEST_TOKEN above, which is the point:
+  // one secret per app, in the file that already holds it.
+  //
+  // Deploys do not self-register the way crons do. `spira · api` and `spira · front` exist on
+  // Zeus's /deploys because the port registry declares them; the first report fills a row in rather
+  // than creating one. Left empty, deploys still work and simply go unreported, with one line
+  // saying so in the deploy output.
+  ZEUS_DEPLOY_INGEST_URL: "http://127.0.0.1:6600/api/deploy-reports",
 };
 
 module.exports = {

@@ -256,6 +256,25 @@ when a release changes the schema.
 after a schema change leaves the new schema in place under the old code. Both rollback paths say so as
 they run. When old code cannot run against the migrated schema, roll forward.
 
+### Reporting to Zeus
+
+Both scripts report each deploy to Zeus, so `/deploys` shows what each half of Spira is serving
+(COS-459). One report per run, at the end — `success`, `failed`, or `rolled_back` — carrying the
+release directory name, the full commit sha, the branch and the commits since the last deploy. A
+manual `rollback` reports too, with no commits: it restores a release rather than shipping one.
+
+Setup is one key, `ZEUS_DEPLOY_INGEST_URL`, in `nest-api/ecosystem.config.js` beside COS-447's
+three. Nothing in the API reads it — the scripts run on a laptop, ssh to ks-b and read it off the box
+there, together with `ZEUS_INGEST_TOKEN`, which they share rather than duplicate. `deploy-front.sh`
+reads the **API's** ecosystem file for the same reason: one secret per app, in one file.
+
+The deploy `scp`s `ecosystem.config.js` to the server long before it reports, so the first deploy
+carrying this key already lands on `/deploys` — no separate step.
+
+Reporting can never fail a deploy. Two-second timeout, no retries, every error swallowed. With the
+URL or the token missing from both files the deploy runs exactly as before and prints one line
+saying it went unreported.
+
 ## Backups
 
 The API backs itself up. `DbBackupCronService` runs on `@Cron("0 0 */12 * * *")` — midnight and noon
