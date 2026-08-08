@@ -4,136 +4,167 @@ import { issueTitleError } from "@components/issues/issue-form.util";
 import useRequestHelper from "@helpers/useRequestHelper";
 import { FIELD_LIMITS } from "@schemas/field-limits";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { IssueDetailDto } from "@lib/api-types";
 
-/** Shared by the heading and the field, so nothing shifts when it opens. */
-const TYPE = "text-25 leading-[1.25] font-semibold tracking-title text-ink-1";
+/**
+ * Worn by the field and by the sizer behind it. Every property that decides
+ * where a line breaks belongs here, because the two must break in the same
+ * places — the sizer is what gives the field its height.
+ */
+const TYPE = "text-25 leading-[1.25] font-semibold tracking-title text-ink-1 whitespace-pre-wrap wrap-break-word";
 
 /**
- * The issue title, editable in place.
+ * The issue title — a field, always, with nothing drawn around it.
  *
- * A textarea rather than an input, because a title runs to 255 characters and
- * the heading it replaces wraps: an input would make a four-line title scroll
- * sideways through a one-line box. It grows to its content on every keystroke,
- * so the field is exactly the shape of the heading it stands in for.
+ * There is no read mode and no edit mode: the heading you look at is the same
+ * textarea you type in. That is the whole design. A mode would need a way in,
+ * a way in needs an affordance, and the affordance this replaces — a hover
+ * tint and a tooltip on a `<button>` — was invisible enough that the feature
+ * read as missing. A text field needs none: the pointer becomes an I-beam over
+ * it, and clicking puts the caret where you clicked rather than at some end the
+ * component chose.
+ *
+ * Spellcheck is left on, squiggles and all, because Linear leaves it on.
  */
 export function EditableIssueTitle({ identifier, title }: { identifier: string; title: string }) {
   const router = useRouter();
   const { privateRequest } = useRequestHelper();
 
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(title);
-  const [busy, setBusy] = useState(false);
-  const field = useRef<HTMLTextAreaElement>(null);
+  const [value, setValue] = useState(title);
+  /** What the field held when it took focus; `null` whenever it is not focused. */
+  const focusedWith = useRef<string | null>(null);
+  /** Set by Escape and read by the blur it causes, so that blur discards. */
+  const reverting = useRef(false);
 
-  // Before paint, so the field never renders at one row and then jumps.
-  useLayoutEffect(() => {
-    const element = field.current;
-    if (!element) {
-      return;
-    }
-    element.style.height = "auto";
-    element.style.height = `${element.scrollHeight}px`;
-  }, [draft]);
-
-  // Focused here rather than through `autoFocus`, which is banned for stealing
-  // focus on page load; this one only fires when the owner opened the field.
-  // Caret at the end, since opening a title is almost always an intent to
-  // amend it rather than replace it.
+  // A title that changed elsewhere — by the save below, or in another session —
+  // arrives as a new prop. It is adopted only while the field is idle:
+  // overwriting someone mid-sentence is worse than letting them finish against
+  // a title that is a few seconds stale.
   useEffect(() => {
-    const element = field.current;
-    if (!editing || !element) {
+    if (focusedWith.current !== null) {
       return;
     }
-    element.focus();
-    element.setSelectionRange(element.value.length, element.value.length);
-  }, [editing]);
+    setValue(title);
+  }, [title]);
 
-  const open = () => {
-    setDraft(title);
-    setEditing(true);
-  };
-
-  const save = async () => {
-    const next = draft.trim();
-    if (next === title) {
-      setEditing(false);
+  const save = async (next: string) => {
+    const trimmed = next.trim();
+    if (trimmed === title) {
+      setValue(title);
       return;
     }
 
-    const message = issueTitleError(draft);
+    const message = issueTitleError(trimmed);
     if (message) {
+      // Putting the stored title back loses nothing: `maxLength` rules out the
+      // long case, so the only rule a typed title can break is being empty.
       toast.error(message);
+      setValue(title);
       return;
     }
 
-    setBusy(true);
+    setValue(trimmed);
     try {
       await privateRequest<IssueDetailDto>(`/issues/${identifier}`, {
         method: "PATCH",
-        body: JSON.stringify({ title: next }),
+        body: JSON.stringify({ title: trimmed }),
       });
-      setEditing(false);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The title could not be saved.");
-    } finally {
-      setBusy(false);
+      // Under the same rule as the prop sync above, and for the same reason:
+      // this lands whenever the request gives up, which may be long after the
+      // owner has clicked back into the field and started typing again. Their
+      // own blur will save or revert; putting the old title back under their
+      // caret would lose both the edit that failed and the one in progress.
+      if (focusedWith.current === null) {
+        setValue(title);
+      }
     }
   };
 
-  if (!editing) {
-    return (
-      // The button sits inside the heading rather than replacing it. Making the
-      // title editable must not cost the page its h1 — that is the one element
-      // saying what this page is about.
-      //
-      // And no `aria-label` on the button: a label replaces the subtree it
-      // covers, so "Edit the title" would become the heading's name too and the
-      // page would announce itself as a verb. The button's name is the title,
-      // which is what a control that edits the title should be called; the
-      // tooltip is where "click to edit" belongs.
-      <h1 className={TYPE}>
-        <button
-          type="button"
-          onClick={open}
-          title="Click to edit"
-          className="-mx-2 block w-[calc(100%+16px)] rounded-lg px-2 text-left text-pretty hover:bg-surface-hover"
-        >
-          {title}
-        </button>
-      </h1>
-    );
-  }
-
   return (
-    <textarea
-      ref={field}
-      value={draft}
-      rows={1}
-      disabled={busy}
-      maxLength={FIELD_LIMITS.issueTitle}
-      aria-label="Title"
-      onChange={(event) => setDraft(event.target.value)}
-      // Blur saves rather than discards: the field looks like the heading it
-      // replaces, so clicking away reads as "done", not "cancel". Escape is the
-      // way out, and it is the only way out that loses anything.
-      onBlur={save}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          void save();
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          setDraft(title);
-          setEditing(false);
-        }
-      }}
-      className={`${TYPE} -mx-2 block w-[calc(100%+16px)] resize-none overflow-hidden rounded-lg border border-line-focus bg-field px-2 outline-none disabled:opacity-60`}
-    />
+    // `grid-cols-1` is `minmax(0, 1fr)`: the column is the container's width
+    // rather than the sizer's max-content, which for a title is one very long
+    // unwrapped line.
+    <h1 className="grid grid-cols-1">
+      {/* The field's height, in an element that can have one. A textarea cannot
+          size itself to its content, so the same text is laid out underneath it
+          and the grid cell takes the taller of the two — which is always this,
+          since the field is one row tall. Correct on the server's first paint,
+          and it re-wraps on a resize or a late web font without being told,
+          which is the failure the measure-it-in-an-effect version shipped with.
+
+          The trailing space keeps an emptied title one line tall. */}
+      <span
+        aria-hidden="true"
+        className={`${TYPE} invisible col-start-1 row-start-1`}
+      >
+        {`${value} `}
+      </span>
+
+      {/* Inside the h1 rather than instead of it: a textarea is phrasing
+          content, so the page keeps its heading, and the heading's accessible
+          name resolves to the field's value. */}
+      <textarea
+        value={value}
+        rows={1}
+        maxLength={FIELD_LIMITS.issueTitle}
+        aria-label="Issue title"
+        className={`${TYPE} col-start-1 row-start-1 resize-none overflow-hidden border-0 bg-transparent p-0 outline-none`}
+        onChange={(event) => setValue(event.target.value)}
+        onFocus={(event) => {
+          focusedWith.current = event.target.value;
+        }}
+        // Clicking away is how you finish, so clicking away is what saves.
+        // Every exit lands here, including Escape's, so there is one place that
+        // writes and no path that writes twice.
+        onBlur={(event) => {
+          const opened = focusedWith.current;
+          focusedWith.current = null;
+
+          if (reverting.current) {
+            reverting.current = false;
+            setValue(title);
+            return;
+          }
+
+          // Focused and left alone. Saving here would write back whatever the
+          // field was holding, which may predate someone else's rename.
+          if (opened === event.target.value) {
+            setValue(title);
+            return;
+          }
+
+          void save(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          // An IME's commit and cancel keys arrive here as Enter and Escape.
+          // They belong to the candidate window rather than to this field:
+          // acting on them ejects the typist mid-word and saves — or throws
+          // away — a half-composed title, which makes a title in Japanese,
+          // Chinese, Korean or Vietnamese impossible to type at all. React's
+          // synthetic event does not carry the flag, so ask the native one.
+          if (event.nativeEvent.isComposing) {
+            return;
+          }
+
+          // A title is one line of text however many lines it takes to draw, so
+          // Enter leaves the field instead of adding a newline to it.
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            reverting.current = true;
+            event.currentTarget.blur();
+          }
+        }}
+      />
+    </h1>
   );
 }
