@@ -1,13 +1,16 @@
 import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
+import { projectNameError } from "@components/projects/project-form.util";
 import { ProjectIconButton } from "@components/projects/project-icon-button";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
 import { ProjectTabs } from "@components/shell/project-tabs";
 import { Button } from "@components/ui/button";
+import { EditableTitle } from "@components/ui/editable-title";
 import { ProgressBar } from "@components/ui/progress-pill";
 import { StateIcon } from "@components/ui/state-icon";
 import { serverFetchOptional } from "@lib/server-api";
+import { FIELD_LIMITS } from "@schemas/field-limits";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -51,9 +54,21 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
             className="mb-[18px] size-11 rounded-xl border-transparent bg-transparent hover:border-line"
           />
 
+          {/* The name shrink-wraps so the key chip stays beside it rather than
+              at the far end of the row; `EditableTitle` keeps the textarea's
+              intrinsic width out of its own sizing for exactly this. No leading
+              is passed, so the heading keeps the 1.5 it has always inherited. */}
           <div className="flex items-baseline gap-3">
-            <h1 className="text-27 font-semibold tracking-title text-ink-1">{project.name}</h1>
-            <span className="identifier rounded-[5px] border border-line px-1.5 py-0.5 text-12 text-ink-6">
+            <EditableTitle
+              endpoint={`/projects/${project.key}`}
+              field="name"
+              value={project.name}
+              limit={FIELD_LIMITS.projectName}
+              validate={projectNameError}
+              label="Project name"
+              className="text-27"
+            />
+            <span className="identifier flex-none rounded-[5px] border border-line px-1.5 py-0.5 text-12 text-ink-6">
               {project.key}-
             </span>
           </div>

@@ -1,14 +1,16 @@
-import { EditableIssueTitle } from "@components/issues/editable-issue-title";
 import { EpicChildren } from "@components/issues/epic-children";
 import { IssueArchiveControl } from "@components/issues/issue-archive";
+import { issueTitleError } from "@components/issues/issue-form.util";
 import { IssueProperties } from "@components/issues/issue-properties";
 import { IssueRelations } from "@components/issues/issue-relations";
 import { EditableDescription } from "@components/markdown/editable-description";
 import { Markdown } from "@components/markdown/markdown";
 import { ROUTES } from "@components/shared/config/constants";
 import { AppHeader } from "@components/shell/app-header";
+import { EditableTitle } from "@components/ui/editable-title";
 import { Identifier } from "@components/ui/identifier";
 import { serverFetch, serverFetchOptional } from "@lib/server-api";
+import { FIELD_LIMITS } from "@schemas/field-limits";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import type { IssueDetailDto, IssueListItemDto, LabelDto, WorkflowStateDto } from "@lib/api-types";
@@ -75,9 +77,14 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
               </div>
             )}
 
-            <EditableIssueTitle
-              identifier={issue.identifier}
-              title={issue.title}
+            <EditableTitle
+              endpoint={`/issues/${issue.identifier}`}
+              field="title"
+              value={issue.title}
+              limit={FIELD_LIMITS.issueTitle}
+              validate={issueTitleError}
+              label="Issue title"
+              className="text-25 leading-[1.25]"
             />
 
             {/* The epic used to be repeated here as a card. It is now a crumb
