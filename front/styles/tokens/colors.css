@@ -16,11 +16,15 @@
   --canvas: #26272a;
   /* Cards, table headers, group headers, secondary buttons. */
   --surface: #2c2d31;
-  /* Raised: epic rows, cross-reference chips, active filter pills. */
+  /* Raised: epic rows, cross-reference chips, active filter pills, and a
+     project tab at rest — Linear fills every tab in the group, not just the
+     open one, and this is the step above the canvas it fills them with. */
   --surface-hi: #2f3137;
   /* Row hover. */
   --surface-hover: #323338;
-  /* Nav item active, tab hover. */
+  /* Nav item active, selected toggle. Not the project tabs: those hover to the
+     same value they take when open (--line), so the pointer previews the state
+     it is about to put you in rather than landing a step short of it. */
   --surface-active: #34363b;
   /* Popovers, modals, the icon picker. */
   --overlay: #2a2b2f;
