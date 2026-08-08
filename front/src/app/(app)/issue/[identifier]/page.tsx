@@ -1,3 +1,4 @@
+import { BackToIssues } from "@components/issues/back-to-issues";
 import { EditableIssueTitle } from "@components/issues/editable-issue-title";
 import { EpicChildren } from "@components/issues/epic-children";
 import { IssueArchiveControl } from "@components/issues/issue-archive";
@@ -53,9 +54,14 @@ export default async function IssuePage({ params }: { params: Promise<{ identifi
         leaf={issue.identifier}
       />
       <div className="flex min-h-0 flex-1">
-        <div className="sp-scroll min-w-0 flex-1 overflow-y-auto border-r border-line-chrome pt-10 pb-[90px]">
+        {/* `@container` so the back link can measure the reading pane it sits
+            in rather than the viewport — the pane is what the sidebar and the
+            properties rail leave over, and that is what decides whether there
+            is a margin to put the link in at all. */}
+        <div className="sp-scroll @container min-w-0 flex-1 overflow-y-auto border-r border-line-chrome pt-10 pb-[90px]">
           <div className="mx-auto max-w-[700px] px-[30px]">
-            <div className="mb-[18px] flex items-center gap-[9px]">
+            <div className="relative mb-[18px] flex items-center gap-[9px]">
+              <BackToIssues projectKey={issue.project.key} />
               {/* Was hand-rolled here at list-row sizes (12.5px/ink-2) while the design specifies
                   16px/ink-1 for the detail header — the shared component's `header` variant, which
                   until now had no caller at all. */}
